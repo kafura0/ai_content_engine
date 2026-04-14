@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AI Content Engine",
     description=(
-        "Multi-client social media content engine powered by Claude + Nanobanana 3 "
+        "Multi-client social media content engine powered by Claude + Gemini "
         "via OpenRouter. Generates viral posts with AI images per client brand profile."
     ),
     version="2.0.0",
@@ -29,7 +29,14 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        # Local development
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        # Production
+        "https://joat.studio",
+        "https://www.joat.studio",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
