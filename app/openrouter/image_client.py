@@ -2,7 +2,7 @@ import httpx
 
 from app.config import settings
 
-_URL = "https://openrouter.ai/api/v1/images/generations"
+_URL = "https://openrouter.ai/api/v1/chat/completions"
 _TIMEOUT = httpx.Timeout(120.0, connect=10.0)
 _HEADERS = {
     "Authorization": f"Bearer {settings.openrouter_api_key}",
@@ -14,14 +14,13 @@ _HEADERS = {
 
 async def generate_image(prompt: str) -> str:
     """
-    Call OpenRouter image generation endpoint.
-    Returns the image URL string.
-    Raises on any failure — callers must handle exceptions.
+    Generate an image via OpenRouter chat completions.
+    Returns a data URI (data:image/png;base64,...) or HTTPS URL.
+    Raises on any failure.
     """
     payload = {
         "model": settings.openrouter_image_model,
-        "prompt": prompt,
-        "n": 1,
+        "messages": [{"role": "user", "content": prompt}],
     }
 
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
@@ -29,15 +28,33 @@ async def generate_image(prompt: str) -> str:
 
     if response.status_code != 200:
         raise RuntimeError(
-            f"Image generation failed [{response.status_code}]: {response.text}"
+            f"Image generation failed [{response.status_code}]: {response.text[:300]}"
         )
 
-    data = response.json().get("data", [])
-    if not data:
-        raise RuntimeError("Image generation returned empty data array.")
+    body = response.json()
 
-    url = data[0].get("url")
-    if not url:
-        raise RuntimeError(f"No URL in image generation response: {data[0]}")
+    # Surface API-level errors returned with a 200 status
+    if "error" in body and "choices" not in body:
+        raise RuntimeError(f"OpenRouter error: {body['error']}")
 
-    return url
+    message = body["choices"][0]["message"]
+
+    # Gemini-style: image in message.images[]
+    images = message.get("images") or []
+    if images:
+        url = images[0].get("image_url", {}).get("url")
+        if url:
+            return url
+
+    # Fallback: image embedded in content array
+    content = message.get("content")
+    if isinstance(content, list):
+        for block in content:
+            if block.get("type") == "image_url":
+                url = block.get("image_url", {}).get("url")
+                if url:
+                    return url
+
+    raise RuntimeError(
+        f"No image found in response. Keys in message: {list(message.keys())}"
+    )

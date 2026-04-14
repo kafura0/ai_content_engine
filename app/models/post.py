@@ -26,7 +26,7 @@ class Post(Base):
     call_to_action: Mapped[str] = mapped_column(Text, nullable=False)
     hashtags: Mapped[list | None] = mapped_column(JSON, nullable=True)
     image_prompt: Mapped[str] = mapped_column(Text, nullable=False)
-    image_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     content_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

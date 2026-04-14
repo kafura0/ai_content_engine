@@ -1,0 +1,257 @@
+{
+  "name": "AI Content Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-content",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-001",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [180, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.FASTAPI_BASE_URL }}/clients/{{ $json.client_id }}",
+        "options": {
+          "retry": { "maxTries": 3, "waitBetweenTries": 2000 }
+        }
+      },
+      "id": "node-002",
+      "name": "Fetch Client",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const client = $input.first().json;\n\nconst services = Array.isArray(client.services)\n  ? client.services.join(', ')\n  : (client.services || '');\n\nconst goals = Array.isArray(client.posting_goals)\n  ? client.posting_goals.join(', ')\n  : '';\n\nconst colors = (typeof client.brand_colors === 'object' && client.brand_colors)\n  ? client.brand_colors\n  : {};\n\nconst primary   = colors.primary   || '#000000';\nconst secondary = colors.secondary || '#ffffff';\nconst imageStyle = client.image_style || 'cinematic';\nconst location   = client.location  || '';\n\nconst toneGuide = {\n  professional:  'polished, authoritative — short declarative sentences, no contractions',\n  casual:        'conversational, warm — use contractions, ask rhetorical questions',\n  premium:       'aspirational, exclusive — sensory and transformational language',\n  playful:       'energetic, fun — light humour, punchy short sentences',\n  bold:          'direct, zero-fluff — imperatives, no hedging words',\n  inspirational: 'motivational, uplifting — speak to who the reader wants to become'\n};\nconst tone = toneGuide[client.tone_of_voice] || client.tone_of_voice;\n\nconst contentTypes = ['educational','authority','social_proof','problem_solution','behind_the_scenes'];\nconst hookStyles   = ['curiosity','problem','warning','authority','local'];\n\nconst assignments = Array.from({length: 5}, (_, i) => ({\n  num: i + 1,\n  content_type: contentTypes[i],\n  hook_style:   hookStyles[i]\n})).map(a => `  Post ${a.num}: content_type=${a.content_type}, hook_style=${a.hook_style}`).join('\\n');\n\nconst localCtx = location\n  ? `Local context: Reference ${location} market realities naturally.`\n  : '';\n\nconst systemPrompt = `You are an elite viral social media copywriter. You write for humans — authentic, emotional, direct.\\nBANNED: \"we are proud to announce\", \"game-changing\", \"synergy\", \"leverage\", \"seamless\", \"cutting-edge\".\\nNO two hooks start with the same word. NO two CTAs use the same verb. NO two posts share the same emotional trigger.\\nOutput ONLY valid JSON. No markdown. No code fences.`;\n\nconst userPrompt = `Generate exactly 5 viral social media posts.\\n\\nCLIENT:\\n- Name: ${client.name}\\n- Industry: ${client.industry}\\n- Services: ${services}\\n- Tone: ${client.tone_of_voice} (${tone})\\n- Audience: ${client.target_audience || 'general audience'}\\n- Location: ${location || 'not specified'}\\n- Goals: ${goals}\\n- Brand Colors: Primary ${primary} / Secondary ${secondary}\\n- Image Style: ${imageStyle}\\n\\nPOST ASSIGNMENTS:\\n${assignments}\\n\\nHOOK STYLES:\\n- curiosity: \"Most [audience] don't know this about...\" — open a loop\\n- problem: \"Tired of [specific pain]?\" — make them feel seen\\n- warning: \"This mistake could be costing you [consequence]...\" — create urgency\\n- authority: \"After [X years/clients] in [industry]...\" — lead with credentials\\n- local: Hyper-local opening specific to ${location || 'the client location'}\\n\\nCAPTION STRUCTURE (3 beats, blank line between each):\\n  Beat 1: Deliver on the hook promise\\n  Beat 2: Core value, insight, or story\\n  Beat 3: Bridge naturally to the CTA\\n\\nEMOTIONAL TRIGGERS — use each once across 5 posts: trust, urgency, curiosity, authority, aspiration\\n\\nCTA VERBS — no repeats: comment / DM / book / share / call / tag / visit / save / reply / click\\n\\nHASHTAGS — 6-9 per post: 2 broad industry + 3-4 niche + 1-2 local (if location exists)\\n\\nIMAGE PROMPT — all 6 elements required:\\n\"${imageStyle} photo of [subject], [environment], [lighting], ${primary}/${secondary} in [element], [angle], DSLR, 4K, photorealistic, no text\"\\n\\n${localCtx}\\n\\nReturn ONLY this JSON:\\n{\\n  \"posts\": [\\n    {\\n      \"content_type\": \"educational\",\\n      \"hook\": \"...\",\\n      \"caption\": \"...\",\\n      \"emotional_trigger\": \"curiosity\",\\n      \"call_to_action\": \"...\",\\n      \"hashtags\": [\"#tag1\"],\\n      \"image_prompt\": \"...\"\\n    }\\n  ]\\n}`;\n\nreturn [{\n  json: {\n    client_id: client.id,\n    client,\n    systemPrompt,\n    userPrompt\n  }\n}];"
+      },
+      "id": "node-003",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [620, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "HTTP-Referer",  "value": "https://ai-content-engine" },
+            { "name": "X-Title",       "value": "AI Content Engine" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $env.OPENROUTER_TEXT_MODEL || 'anthropic/claude-3.5-haiku', messages: [{ role: 'system', content: $json.systemPrompt }, { role: 'user', content: $json.userPrompt }], temperature: 0.85, response_format: { type: 'json_object' } }) }}",
+        "options": {
+          "retry": { "maxTries": 3, "waitBetweenTries": 3000 }
+        }
+      },
+      "id": "node-004",
+      "name": "Generate Text (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst clientId = $('Build Prompt').first().json.client_id;\n\nlet posts = [];\ntry {\n  const raw = response.choices[0].message.content;\n  const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;\n  posts = parsed.posts || parsed;\n  if (!Array.isArray(posts)) posts = [];\n} catch (e) {\n  // Return a fallback post so the workflow doesn't die\n  return [{\n    json: {\n      client_id: clientId,\n      hook: 'Content generation is temporarily unavailable.',\n      caption: 'Please try again shortly.',\n      emotional_trigger: 'trust',\n      call_to_action: 'Contact us directly.',\n      hashtags: [],\n      image_prompt: 'professional business photo, clean office environment, natural lighting',\n      content_type: 'educational',\n      is_fallback: true\n    }\n  }];\n}\n\nif (posts.length === 0) {\n  return [{ json: { error: 'No posts returned from model', client_id: clientId } }];\n}\n\n// Inject client_id into every post for downstream access\nreturn posts.map(post => ({\n  json: {\n    client_id: clientId,\n    hook:              post.hook              || '',\n    caption:           post.caption           || '',\n    emotional_trigger: post.emotional_trigger || null,\n    call_to_action:    post.call_to_action    || '',\n    hashtags:          Array.isArray(post.hashtags) ? post.hashtags : [],\n    image_prompt:      post.image_prompt      || '',\n    content_type:      post.content_type      || null\n  }\n}));"
+      },
+      "id": "node-005",
+      "name": "Parse Posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1060, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "node-006",
+      "name": "Loop Posts",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1280, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "f1", "name": "client_id",        "value": "={{ $json.client_id }}", "type": "string" },
+            { "id": "f2", "name": "hook",              "value": "={{ $json.hook }}", "type": "string" },
+            { "id": "f3", "name": "caption",           "value": "={{ $json.caption }}", "type": "string" },
+            { "id": "f4", "name": "emotional_trigger", "value": "={{ $json.emotional_trigger }}", "type": "string" },
+            { "id": "f5", "name": "call_to_action",    "value": "={{ $json.call_to_action }}", "type": "string" },
+            { "id": "f6", "name": "hashtags",          "value": "={{ $json.hashtags }}", "type": "array" },
+            { "id": "f7", "name": "image_prompt",      "value": "={{ $json.image_prompt }}", "type": "string" },
+            { "id": "f8", "name": "content_type",      "value": "={{ $json.content_type }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-007",
+      "name": "Preserve Post",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1500, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "HTTP-Referer",  "value": "https://ai-content-engine" },
+            { "name": "X-Title",       "value": "AI Content Engine" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'google/gemini-2.5-flash-image', messages: [{ role: 'user', content: $json.image_prompt }] }) }}",
+        "options": {
+          "retry": { "maxTries": 3, "waitBetweenTries": 3000 }
+        }
+      },
+      "id": "node-008",
+      "name": "Generate Image (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1720, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst post     = $('Preserve Post').first().json;\n\nlet imageUrl = null;\ntry {\n  const message = response.choices[0].message;\n  // Gemini returns image in message.images[]\n  if (Array.isArray(message.images) && message.images.length > 0) {\n    imageUrl = message.images[0]?.image_url?.url || null;\n  }\n  // Fallback: image embedded in content array\n  if (!imageUrl && Array.isArray(message.content)) {\n    for (const block of message.content) {\n      if (block.type === 'image_url') {\n        imageUrl = block.image_url?.url || null;\n        break;\n      }\n    }\n  }\n} catch (e) {\n  // imageUrl stays null — post is still valid without image\n}\n\nreturn [{\n  json: {\n    client_id:        post.client_id,\n    hook:             post.hook,\n    caption:          post.caption,\n    emotional_trigger:post.emotional_trigger,\n    call_to_action:   post.call_to_action,\n    hashtags:         post.hashtags,\n    image_prompt:     post.image_prompt,\n    content_type:     post.content_type,\n    image_url:        imageUrl\n  }\n}];"
+      },
+      "id": "node-009",
+      "name": "Merge Post + Image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1940, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst posts = allItems.map(i => i.json);\nconst clientId = posts[0]?.client_id || '';\n\n// Strip internal client_id from each post before saving\nconst cleanPosts = posts.map(p => ({\n  hook:              p.hook,\n  caption:           p.caption,\n  emotional_trigger: p.emotional_trigger,\n  call_to_action:    p.call_to_action,\n  hashtags:          p.hashtags || [],\n  image_prompt:      p.image_prompt,\n  content_type:      p.content_type,\n  image_url:         p.image_url || null\n}));\n\nreturn [{\n  json: {\n    client_id: clientId,\n    posts: cleanPosts\n  }\n}];"
+      },
+      "id": "node-010",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2160, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FASTAPI_BASE_URL }}/n8n/save-posts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "retry": { "maxTries": 2, "waitBetweenTries": 2000 }
+        }
+      },
+      "id": "node-011",
+      "name": "Save to FastAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2380, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "node-012",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2600, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"error\": true, \"detail\": \"Content generation failed. Please try again.\", \"client_id\": \"{{ $json.client_id }}\"}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "node-013",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1060, 520]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Fetch Client", "type": "main", "index": 0 }]]
+    },
+    "Fetch Client": {
+      "main": [[{ "node": "Build Prompt", "type": "main", "index": 0 }]]
+    },
+    "Build Prompt": {
+      "main": [[{ "node": "Generate Text (Claude)", "type": "main", "index": 0 }]]
+    },
+    "Generate Text (Claude)": {
+      "main": [[{ "node": "Parse Posts", "type": "main", "index": 0 }]]
+    },
+    "Parse Posts": {
+      "main": [[{ "node": "Loop Posts", "type": "main", "index": 0 }]]
+    },
+    "Loop Posts": {
+      "main": [
+        [{ "node": "Preserve Post", "type": "main", "index": 0 }],
+        [{ "node": "Format Output", "type": "main", "index": 0 }]
+      ]
+    },
+    "Preserve Post": {
+      "main": [[{ "node": "Generate Image (Gemini)", "type": "main", "index": 0 }]]
+    },
+    "Generate Image (Gemini)": {
+      "main": [[{ "node": "Merge Post + Image", "type": "main", "index": 0 }]]
+    },
+    "Merge Post + Image": {
+      "main": [[{ "node": "Loop Posts", "type": "main", "index": 0 }]]
+    },
+    "Format Output": {
+      "main": [[{ "node": "Save to FastAPI", "type": "main", "index": 0 }]]
+    },
+    "Save to FastAPI": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

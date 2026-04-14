@@ -1,11 +1,14 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.database import create_tables
 from app.routes.clients import router as clients_router
 from app.routes.content import router as content_router
+from app.routes.n8n import router as n8n_router
+from app.routes.posts import router as posts_router
 
 
 @asynccontextmanager
@@ -24,8 +27,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(clients_router)
 app.include_router(content_router)
+app.include_router(posts_router)
+app.include_router(n8n_router)
 
 
 @app.exception_handler(Exception)

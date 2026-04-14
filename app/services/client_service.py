@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.client import Client
+from app.models.post import Post
 from app.schemas.client import ClientCreate
 
 
@@ -21,4 +22,13 @@ async def get_client(db: AsyncSession, client_id: str) -> Client | None:
 
 async def list_clients(db: AsyncSession) -> list[Client]:
     result = await db.execute(select(Client).order_by(Client.created_at.desc()))
+    return list(result.scalars().all())
+
+
+async def get_posts_for_client(db: AsyncSession, client_id: str) -> list[Post]:
+    result = await db.execute(
+        select(Post)
+        .where(Post.client_id == client_id)
+        .order_by(Post.created_at.desc())
+    )
     return list(result.scalars().all())
