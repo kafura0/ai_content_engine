@@ -9,7 +9,14 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
 
-engine = create_async_engine(settings.database_url, echo=False)
+# asyncpg requires an explicit ssl context for Supabase / managed PostgreSQL.
+# SQLite connections ignore connect_args, so this is safe in both environments.
+_connect_args: dict = {}
+if settings.database_url.startswith("postgresql"):
+    import ssl as _ssl
+    _connect_args["ssl"] = _ssl.create_default_context()
+
+engine = create_async_engine(settings.database_url, echo=False, connect_args=_connect_args)
 
 AsyncSessionLocal = async_sessionmaker(
     engine,
