@@ -1,5 +1,7 @@
 # Environment
 .env
+.env.local
+.env*.local
 
 # Python
 __pycache__/
@@ -7,6 +9,7 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+*.db
 
 # Virtual environments
 .venv/
@@ -25,3 +28,7 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
