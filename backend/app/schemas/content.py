@@ -16,6 +16,7 @@ class PostOut(BaseModel):
     image_prompt: str
     image_url: str | None
     content_type: str | None
+    status: str
     created_at: datetime
 
 

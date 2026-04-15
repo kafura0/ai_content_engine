@@ -10,7 +10,8 @@
       "Bash(rm -f content_engine.db)",
       "Bash(gh auth:*)",
       "Bash(cp -r \"c:/Users/User/Desktop/agentic_workflows/content_dashboard\" \"c:/Users/User/Desktop/agentic_workflows/ai_content_engine/content_dashboard\")",
-      "Bash(rm -rf \"c:/Users/User/Desktop/agentic_workflows/ai_content_engine/content_dashboard/.git\")"
+      "Bash(rm -rf \"c:/Users/User/Desktop/agentic_workflows/ai_content_engine/content_dashboard/.git\")",
+      "Bash(ssh root@72.62.134.10 \"docker ps | grep 5678\")"
     ]
   }
 }

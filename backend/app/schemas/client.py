@@ -1,11 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
-
-
-class BrandColors(BaseModel):
-    primary: str = Field(..., description="Hex color, e.g. #1A2B3C")
-    secondary: str = Field(..., description="Hex color, e.g. #FFFFFF")
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ClientCreate(BaseModel):
@@ -15,7 +10,10 @@ class ClientCreate(BaseModel):
         ...,
         description="e.g. professional, casual, premium, playful, bold, inspirational",
     )
-    brand_colors: BrandColors | None = None
+    brand_colors: list[str] | None = Field(
+        None,
+        description="Array of hex color strings, max 10",
+    )
     logo_url: str | None = None
     image_style: str | None = Field(
         None,
@@ -30,6 +28,13 @@ class ClientCreate(BaseModel):
         description="e.g. engagement, leads, awareness, retention",
     )
 
+    @field_validator("brand_colors")
+    @classmethod
+    def max_ten_colors(cls, v: list[str] | None) -> list[str] | None:
+        if v is not None and len(v) > 10:
+            raise ValueError("brand_colors may contain at most 10 values")
+        return v
+
 
 class ClientResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -38,7 +43,7 @@ class ClientResponse(BaseModel):
     name: str
     industry: str
     tone_of_voice: str
-    brand_colors: dict | None
+    brand_colors: list | None
     logo_url: str | None
     image_style: str | None
     target_audience: str | None

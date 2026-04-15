@@ -52,6 +52,7 @@ async def save_n8n_posts(
             image_prompt=p.image_prompt,
             image_url=p.image_url,
             content_type=p.content_type,
+            status="completed",
             created_at=datetime.utcnow(),
         )
         posts.append(post)
