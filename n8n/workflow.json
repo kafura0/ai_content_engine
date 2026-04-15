@@ -23,7 +23,7 @@
       "position": [420, 300],
       "parameters": {
         "method": "GET",
-        "url": "={{ $vars.FASTAPI_BASE_URL + '/clients/' + $json.client_id }}",
+        "url": "={{ 'https://api.joat.studio/clients/' + $json.body.client_id }}",
         "options": {}
       }
     },
@@ -35,7 +35,7 @@
       "position": [640, 300],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const client = $input.first().json;\n\nconst colors = Array.isArray(client.brand_colors)\n  ? client.brand_colors.slice(0, 10).join(', ')\n  : (client.brand_colors || 'brand-appropriate colors');\n\nconst services = Array.isArray(client.services)\n  ? client.services.join(', ')\n  : (client.services || '');\n\nconst locationLine = client.location ? `Location: ${client.location}` : '';\n\nconst systemPrompt = `You are an expert viral social media content creator. Generate highly engaging, platform-optimised posts. Respond with valid JSON only — no markdown, no code blocks.`;\n\nconst userPrompt = `Create 5 viral social media posts for this brand:\n\nBrand: ${client.name}\nIndustry: ${client.industry || 'General'}\nTone: ${client.tone_of_voice || 'Professional'}\nServices: ${services}\nAudience: ${client.target_audience || 'General public'}\n${locationLine}\nImage Style: ${client.image_style || 'Photorealistic professional photography'}\nBrand Colors: ${colors}\n\nReturn ONLY a JSON object with this structure:\n{\n  \"posts\": [\n    {\n      \"hook\": \"viral opening line under 10 words\",\n      \"caption\": \"engaging caption 150-300 chars\",\n      \"call_to_action\": \"clear compelling CTA\",\n      \"hashtags\": [\"tag1\", \"tag2\", \"tag3\", \"tag4\", \"tag5\"],\n      \"image_prompt\": \"detailed prompt: subject, environment, lighting, camera angle, photorealistic, brand colors: ${colors}\",\n      \"emotional_trigger\": \"fear|joy|curiosity|urgency|trust\",\n      \"content_type\": \"educational|promotional|engagement|storytelling\"\n    }\n  ]\n}`;\n\nreturn [{ json: { client_id: client.id, client, systemPrompt, userPrompt } }];"
+        "jsCode": "const client = $input.first().json;\n\nconst colors = Array.isArray(client.brand_colors)\n  ? client.brand_colors.slice(0, 10).join(', ')\n  : (client.brand_colors || 'brand-appropriate colors');\n\nconst services = Array.isArray(client.services)\n  ? client.services.join(', ')\n  : (client.services || '');\n\nconst locationLine = client.location ? `Location: ${client.location}` : '';\n\nconst systemPrompt = `You are an expert viral social media content creator. Generate highly engaging, platform-optimised posts. Respond with valid JSON only — no markdown, no code blocks.`;\n\nconst userPrompt = `Create 5 viral social media posts for this brand:\\n\\nBrand: ${client.name}\\nIndustry: ${client.industry || 'General'}\\nTone: ${client.tone_of_voice || 'Professional'}\\nServices: ${services}\\nAudience: ${client.target_audience || 'General public'}\\n${locationLine}\\nImage Style: ${client.image_style || 'Photorealistic professional photography'}\\nBrand Colors: ${colors}\\n\\nReturn ONLY a JSON object with this structure:\\n{\\n  \"posts\": [\\n    {\\n      \"hook\": \"viral opening line under 10 words\",\\n      \"caption\": \"engaging caption 150-300 chars\",\\n      \"call_to_action\": \"clear compelling CTA\",\\n      \"hashtags\": [\"tag1\", \"tag2\", \"tag3\", \"tag4\", \"tag5\"],\\n      \"image_prompt\": \"detailed prompt: subject, environment, lighting, camera angle, photorealistic, brand colors: ${colors}\",\\n      \"emotional_trigger\": \"fear|joy|curiosity|urgency|trust\",\\n      \"content_type\": \"educational|promotional|engagement|storytelling\"\\n    }\\n  ]\\n}`;\n\nreturn [{ json: { client_id: client.id, client, systemPrompt, userPrompt } }];"
       }
     },
     {
@@ -50,7 +50,7 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ 'Bearer ' + $vars.OPENROUTER_API_KEY }}" },
+            { "name": "Authorization", "value": "Bearer PASTE_YOUR_OPENROUTER_KEY_HERE" },
             { "name": "Content-Type",  "value": "application/json" },
             { "name": "HTTP-Referer",  "value": "https://joat.studio" },
             { "name": "X-Title",       "value": "AI Content Engine" }
@@ -59,7 +59,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ model: $vars.OPENROUTER_TEXT_MODEL || 'anthropic/claude-3-5-haiku', messages: [{role: 'system', content: $json.systemPrompt}, {role: 'user', content: $json.userPrompt}], response_format: {type: 'json_object'}, temperature: 0.8 }) }}",
+        "body": "={{ JSON.stringify({ model: 'anthropic/claude-3-5-haiku', messages: [{role: 'system', content: $json.systemPrompt}, {role: 'user', content: $json.userPrompt}], response_format: {type: 'json_object'}, temperature: 0.8 }) }}",
         "options": {}
       }
     },
@@ -82,7 +82,7 @@
       "position": [1300, 300],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const { client_id, posts } = $input.first().json;\nconst apiKey = $vars.OPENROUTER_API_KEY;\nconst imageModel = $vars.OPENROUTER_IMAGE_MODEL || 'google/gemini-2.5-flash-image';\nconst PLACEHOLDER = 'https://placehold.co/1024x1024/1a1a2e/ffffff.png';\n\nasync function generateImage(prompt) {\n  try {\n    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {\n      method: 'POST',\n      headers: {\n        'Authorization': `Bearer ${apiKey}`,\n        'Content-Type': 'application/json',\n        'HTTP-Referer': 'https://joat.studio',\n        'X-Title': 'AI Content Engine'\n      },\n      body: JSON.stringify({\n        model: imageModel,\n        messages: [{ role: 'user', content: prompt }]\n      })\n    });\n    if (!res.ok) return null;\n    const data = await res.json();\n    const msg = data.choices?.[0]?.message;\n    if (!msg) return null;\n    if (msg.images?.[0]?.image_url?.url) return msg.images[0].image_url.url;\n    if (Array.isArray(msg.content)) {\n      for (const block of msg.content) {\n        if (block.type === 'image_url' && block.image_url?.url) return block.image_url.url;\n      }\n    }\n    return null;\n  } catch(e) {\n    console.log('Image gen failed:', e.message);\n    return null;\n  }\n}\n\nconst processed = [];\nfor (const post of posts) {\n  const imageUrl = await generateImage(post.image_prompt);\n  processed.push({ ...post, image_url: imageUrl || PLACEHOLDER });\n}\n\nreturn [{ json: { client_id, posts: processed } }];"
+        "jsCode": "const { client_id, posts } = $input.first().json;\nconst apiKey = 'PASTE_YOUR_OPENROUTER_KEY_HERE';\nconst imageModel = 'google/gemini-2.5-flash-image';\nconst PLACEHOLDER = 'https://placehold.co/1024x1024/1a1a2e/ffffff.png';\n\nasync function generateImage(prompt) {\n  try {\n    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {\n      method: 'POST',\n      headers: {\n        'Authorization': `Bearer ${apiKey}`,\n        'Content-Type': 'application/json',\n        'HTTP-Referer': 'https://joat.studio',\n        'X-Title': 'AI Content Engine'\n      },\n      body: JSON.stringify({\n        model: imageModel,\n        messages: [{ role: 'user', content: prompt }]\n      })\n    });\n    if (!res.ok) return null;\n    const data = await res.json();\n    const msg = data.choices?.[0]?.message;\n    if (!msg) return null;\n    if (msg.images?.[0]?.image_url?.url) return msg.images[0].image_url.url;\n    if (Array.isArray(msg.content)) {\n      for (const block of msg.content) {\n        if (block.type === 'image_url' && block.image_url?.url) return block.image_url.url;\n      }\n    }\n    return null;\n  } catch(e) {\n    console.log('Image gen failed:', e.message);\n    return null;\n  }\n}\n\nconst processed = [];\nfor (const post of posts) {\n  const imageUrl = await generateImage(post.image_prompt);\n  processed.push({ ...post, image_url: imageUrl || PLACEHOLDER });\n}\n\nreturn [{ json: { client_id, posts: processed } }];"
       }
     },
     {
@@ -93,7 +93,7 @@
       "position": [1520, 300],
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.FASTAPI_BASE_URL + '/n8n/save-posts' }}",
+        "url": "https://api.joat.studio/n8n/save-posts",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
