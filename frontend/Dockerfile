@@ -35,7 +35,6 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 # standalone output contains everything needed to run the server
 COPY --from=builder --chown=appuser:appgroup /app/.next/standalone ./
 COPY --from=builder --chown=appuser:appgroup /app/.next/static ./.next/static
-COPY --from=builder --chown=appuser:appgroup /app/public ./public 2>/dev/null || true
 
 USER appuser
 
