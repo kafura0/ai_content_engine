@@ -14,7 +14,12 @@ from app.config import settings
 _connect_args: dict = {}
 if settings.database_url.startswith("postgresql"):
     import ssl as _ssl
-    _connect_args["ssl"] = _ssl.create_default_context()
+    _ssl_ctx = _ssl.create_default_context()
+    # Supabase pooler (Supavisor) uses a self-signed cert in the chain.
+    # Disabling verification is standard practice for pooler connections.
+    _ssl_ctx.check_hostname = False
+    _ssl_ctx.verify_mode = _ssl.CERT_NONE
+    _connect_args["ssl"] = _ssl_ctx
 
 engine = create_async_engine(settings.database_url, echo=False, connect_args=_connect_args)
 
