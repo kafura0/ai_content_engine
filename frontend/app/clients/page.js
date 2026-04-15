@@ -4,25 +4,26 @@ import { useState, useEffect } from 'react'
 import ClientCard from '@/components/ClientCard'
 import { getClients, createClient } from '@/lib/api'
 
-const TONES = ['professional', 'casual', 'premium', 'playful', 'bold', 'inspirational']
+const TONES  = ['professional', 'casual', 'premium', 'playful', 'bold', 'inspirational']
 const STYLES = ['cinematic', 'realistic', 'minimal', 'bold', 'editorial', 'lifestyle']
-const GOALS = ['engagement', 'leads', 'awareness', 'retention']
+const GOALS  = ['engagement', 'leads', 'awareness', 'retention']
 
 const blank = {
   name: '', industry: '', tone_of_voice: 'professional',
-  brand_colors_primary: '#6366F1', brand_colors_secondary: '#ffffff',
+  brand_colors: [],
+  _color_picker: '#6366F1',
   image_style: 'cinematic', services: '', target_audience: '',
   location: '', posting_goals: ['leads'], logo_url: '',
 }
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState(blank)
+  const [clients,    setClients]    = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState(null)
+  const [showForm,   setShowForm]   = useState(false)
+  const [form,       setForm]       = useState(blank)
   const [submitting, setSubmitting] = useState(false)
-  const [formError, setFormError] = useState(null)
+  const [formError,  setFormError]  = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -51,22 +52,33 @@ export default function ClientsPage() {
     }))
   }
 
+  function addColor() {
+    const color = form._color_picker.trim()
+    if (!color || form.brand_colors.length >= 10) return
+    if (form.brand_colors.includes(color)) return
+    setForm(p => ({ ...p, brand_colors: [...p.brand_colors, color] }))
+  }
+
+  function removeColor(index) {
+    setForm(p => ({ ...p, brand_colors: p.brand_colors.filter((_, i) => i !== index) }))
+  }
+
   async function submit(e) {
     e.preventDefault()
     setSubmitting(true)
     setFormError(null)
     try {
       await createClient({
-        name: form.name,
-        industry: form.industry,
-        tone_of_voice: form.tone_of_voice,
-        brand_colors: { primary: form.brand_colors_primary, secondary: form.brand_colors_secondary },
-        image_style: form.image_style,
-        services: form.services.split(',').map(s => s.trim()).filter(Boolean),
+        name:            form.name,
+        industry:        form.industry,
+        tone_of_voice:   form.tone_of_voice,
+        brand_colors:    form.brand_colors.length > 0 ? form.brand_colors : null,
+        image_style:     form.image_style,
+        services:        form.services.split(',').map(s => s.trim()).filter(Boolean),
         target_audience: form.target_audience,
-        location: form.location || null,
-        posting_goals: form.posting_goals,
-        logo_url: form.logo_url || null,
+        location:        form.location || null,
+        posting_goals:   form.posting_goals,
+        logo_url:        form.logo_url || null,
       })
       setForm(blank)
       setShowForm(false)
@@ -103,53 +115,93 @@ export default function ClientsPage() {
           <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
             <Field label="Business Name *">
-              <input name="name" value={form.name} onChange={set} required placeholder="Apex Electrical" className={input} />
+              <input name="name" value={form.name} onChange={set} required
+                placeholder="Apex Electrical" className={inp} />
             </Field>
 
             <Field label="Industry *">
-              <input name="industry" value={form.industry} onChange={set} required placeholder="electrical contracting" className={input} />
+              <input name="industry" value={form.industry} onChange={set} required
+                placeholder="electrical contracting" className={inp} />
             </Field>
 
             <Field label="Tone of Voice *">
-              <select name="tone_of_voice" value={form.tone_of_voice} onChange={set} className={input}>
+              <select name="tone_of_voice" value={form.tone_of_voice} onChange={set} className={inp}>
                 {TONES.map(t => <option key={t} value={t}>{cap(t)}</option>)}
               </select>
             </Field>
 
             <Field label="Image Style *">
-              <select name="image_style" value={form.image_style} onChange={set} className={input}>
+              <select name="image_style" value={form.image_style} onChange={set} className={inp}>
                 {STYLES.map(s => <option key={s} value={s}>{cap(s)}</option>)}
               </select>
             </Field>
 
-            <Field label="Brand Colors">
-              <div className="flex gap-3">
-                {[['brand_colors_primary', 'Primary'], ['brand_colors_secondary', 'Secondary']].map(([name, label]) => (
-                  <div key={name} className="flex-1">
-                    <p className="text-xs text-slate-400 mb-1">{label}</p>
-                    <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2">
-                      <input type="color" name={name} value={form[name]} onChange={set}
-                        className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent p-0" />
-                      <span className="text-xs text-slate-600 font-mono">{form[name]}</span>
-                    </div>
+            {/* Brand Colors — array, max 10 */}
+            <div className="md:col-span-2">
+              <Field label={`Brand Colors (${form.brand_colors.length}/10)`}>
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      name="_color_picker"
+                      value={form._color_picker}
+                      onChange={set}
+                      className="w-10 h-10 rounded-lg cursor-pointer border border-slate-200 p-0.5"
+                    />
+                    <input
+                      type="text"
+                      name="_color_picker"
+                      value={form._color_picker}
+                      onChange={set}
+                      placeholder="#6366F1"
+                      className={`${inp} flex-1 font-mono`}
+                    />
+                    <button
+                      type="button"
+                      onClick={addColor}
+                      disabled={form.brand_colors.length >= 10}
+                      className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Add
+                    </button>
                   </div>
-                ))}
-              </div>
-            </Field>
+                  {form.brand_colors.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {form.brand_colors.map((color, i) => (
+                        <div key={i} className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-full">
+                          <span className="w-4 h-4 rounded-full border border-slate-200 flex-shrink-0"
+                            style={{ backgroundColor: color }} />
+                          <span className="text-xs font-mono text-slate-600">{color}</span>
+                          <button type="button" onClick={() => removeColor(i)}
+                            className="text-slate-400 hover:text-red-400 ml-0.5 text-base leading-none transition-colors">
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Field>
+            </div>
 
             <Field label="Target Audience *">
               <input name="target_audience" value={form.target_audience} onChange={set} required
-                placeholder="homeowners in Nairobi" className={input} />
+                placeholder="homeowners in Nairobi" className={inp} />
             </Field>
 
             <Field label="Services (comma separated) *">
               <input name="services" value={form.services} onChange={set} required
-                placeholder="wiring, solar installation, CCTV" className={input} />
+                placeholder="wiring, solar installation, CCTV" className={inp} />
             </Field>
 
             <Field label="Location">
               <input name="location" value={form.location} onChange={set}
-                placeholder="Nairobi, Kenya" className={input} />
+                placeholder="Nairobi, Kenya" className={inp} />
+            </Field>
+
+            <Field label="Logo URL (optional)">
+              <input name="logo_url" value={form.logo_url} onChange={set}
+                placeholder="https://..." className={inp} />
             </Field>
 
             <div className="md:col-span-2">
@@ -166,13 +218,6 @@ export default function ClientsPage() {
                   </button>
                 ))}
               </div>
-            </div>
-
-            <div className="md:col-span-2">
-              <Field label="Logo URL (optional)">
-                <input name="logo_url" value={form.logo_url} onChange={set}
-                  placeholder="https://..." className={input} />
-              </Field>
             </div>
 
             {formError && (
@@ -210,8 +255,7 @@ export default function ClientsPage() {
   )
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────
-const input = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white'
+const inp = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white'
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1)
 
 function Field({ label, children }) {
