@@ -149,9 +149,13 @@ def build_viral_prompt(client: "Client", count: int) -> str:
     location_line = f"- Location: {location}" if location else "- Location: not specified"
     audience = client.target_audience or "general audience"
 
-    colors = client.brand_colors or {}
-    primary = colors.get("primary", "#000000")
-    secondary = colors.get("secondary", "#FFFFFF")
+    colors = client.brand_colors or []
+    if isinstance(colors, dict):
+        primary = colors.get("primary", "#000000")
+        secondary = colors.get("secondary", "#FFFFFF")
+    else:
+        primary = colors[0] if len(colors) > 0 else "#000000"
+        secondary = colors[1] if len(colors) > 1 else "#FFFFFF"
     image_style = client.image_style or "cinematic"
 
     tone_key = (client.tone_of_voice or "professional").lower()
