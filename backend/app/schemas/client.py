@@ -47,6 +47,38 @@ class ClientCreate(BaseModel):
         None,
         description="budget / mid-range / premium / luxury",
     )
+    # Brand identity
+    brand_tagline: str | None = None
+    words_to_avoid: list[str] | None = Field(
+        None,
+        description="Words, phrases, or competitor names the AI must never use",
+    )
+    founding_story: str | None = Field(
+        None,
+        description="Short origin story — used in behind-the-scenes posts",
+    )
+    cta_destination: str | None = Field(
+        None,
+        description="URL, phone number, or WhatsApp link for CTAs",
+    )
+    # Operational
+    monthly_post_quota: int = Field(
+        default=20,
+        ge=1,
+        description="Max posts to generate per month for this client",
+    )
+    notes: str | None = Field(
+        None,
+        description="Internal notes — not sent to the AI",
+    )
+    # Publishing / scheduling
+    timezone: str = Field(
+        default="UTC",
+        description="IANA timezone, e.g. Africa/Nairobi",
+    )
+    facebook_page_id: str | None = None
+    instagram_account_id: str | None = None
+    tiktok_account_id: str | None = None
 
     @field_validator("brand_colors")
     @classmethod
@@ -79,6 +111,16 @@ class ClientResponse(BaseModel):
     past_wins: list | None
     platforms: list | None
     price_positioning: str | None
+    brand_tagline: str | None
+    words_to_avoid: list | None
+    founding_story: str | None
+    cta_destination: str | None
+    monthly_post_quota: int
+    notes: str | None
+    timezone: str
+    facebook_page_id: str | None
+    instagram_account_id: str | None
+    tiktok_account_id: str | None
     is_active: bool
     created_at: datetime
 

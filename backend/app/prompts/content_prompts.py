@@ -201,13 +201,18 @@ def build_viral_prompt(client: "Client", count: int) -> str:
     tone_key = (client.tone_of_voice or "professional").lower()
     tone_description = _TONE_GUIDE.get(tone_key, client.tone_of_voice)
 
-    # New fields
-    pain_points = client.audience_pain_points or []
-    usps = client.unique_selling_points or []
-    wins = client.past_wins or []
-    platforms = client.platforms or []
-    price_pos = (client.price_positioning or "").lower()
+    # AI intelligence fields
+    pain_points  = client.audience_pain_points or []
+    usps         = client.unique_selling_points or []
+    wins         = client.past_wins or []
+    platforms    = client.platforms or []
+    price_pos    = (client.price_positioning or "").lower()
+    tagline      = client.brand_tagline or ""
+    avoid        = client.words_to_avoid or []
+    story        = client.founding_story or ""
+    cta_dest     = client.cta_destination or ""
 
+    # ── Brief optional lines ──────────────────────────────────────────────────
     pain_block = (
         "- Audience Pain Points:\n" + "\n".join(f"    • {p}" for p in pain_points)
         if pain_points else ""
@@ -220,20 +225,49 @@ def build_viral_prompt(client: "Client", count: int) -> str:
         "- Past Wins & Proof Points:\n" + "\n".join(f"    • {w}" for w in wins)
         if wins else ""
     )
+    price_line = (
+        f"- Price Positioning : {price_pos.capitalize()} — {_PRICE_POSITIONING_GUIDE[price_pos]}"
+        if price_pos and price_pos in _PRICE_POSITIONING_GUIDE else ""
+    )
+    tagline_line = f"- Brand Tagline     : {tagline}" if tagline else ""
 
-    price_line = ""
-    if price_pos and price_pos in _PRICE_POSITIONING_GUIDE:
-        price_line = f"- Price Positioning : {price_pos.capitalize()} — {_PRICE_POSITIONING_GUIDE[price_pos]}"
+    optional_brief = "\n".join(filter(None, [tagline_line, pain_block, usp_block, wins_block, price_line]))
+    if optional_brief:
+        optional_brief = "\n" + optional_brief
 
+    # ── Banned words block ────────────────────────────────────────────────────
+    client_bans = ""
+    if avoid:
+        client_bans = (
+            "\n--- CLIENT-SPECIFIC BANS (in addition to the global list above) ---\n"
+            "Never write: " + " / ".join(f'"{w}"' for w in avoid) + "\n"
+        )
+
+    # ── Behind-the-scenes story injection ────────────────────────────────────
+    bts_story_line = ""
+    if story:
+        bts_story_line = (
+            f"\n  Founding story (use as Beat 1 source when relevant): {story}"
+        )
+
+    # ── CTA destination ───────────────────────────────────────────────────────
+    cta_dest_line = ""
+    if cta_dest:
+        cta_dest_line = f"\n- Every CTA must direct the reader to: {cta_dest}"
+
+    # ── Platform formatting ───────────────────────────────────────────────────
     platform_instruction = ""
     if platforms:
         platform_lines = "\n".join(
             f"  {p.upper()}: {_PLATFORM_GUIDE.get(p.lower(), 'Standard social media format.')}"
             for p in platforms
         )
-        platform_instruction = f"\n=== PLATFORM FORMATTING RULES ===\nAdapt every post for these platforms:\n{platform_lines}\n"
+        platform_instruction = (
+            f"\n=== PLATFORM FORMATTING RULES ===\n"
+            f"Adapt every post for these platforms:\n{platform_lines}\n"
+        )
 
-    # Pair each post with a content type AND a hook style — both rotate independently
+    # ── Post assignments ──────────────────────────────────────────────────────
     assignments = []
     for i in range(count):
         content_type = CONTENT_TYPES[i % len(CONTENT_TYPES)]
@@ -250,21 +284,41 @@ def build_viral_prompt(client: "Client", count: int) -> str:
         for num, ct, hs, et, hf in assignments
     )
 
-    # Local context instruction
+    # ── Local context (multi-country aware) ──────────────────────────────────
     local_instruction = ""
     if location:
         local_instruction = (
             f"\nLOCAL CONTEXT: The client is based in {location}. "
-            "Where natural, reference local realities, culture, or market conditions "
-            "that the target audience will instantly recognise. "
-            "For Nairobi/Kenya contexts: reference local housing, construction practices, "
-            "cost realities, Swahili phrases (sparingly), or Kenyan consumer behaviour."
+            "Where natural, reference local realities, culture, market conditions, "
+            "and consumer behaviour that the target audience in this location will instantly recognise. "
+            "Use locally resonant language — reference local landmarks, common practices, "
+            "cultural truths, or market-specific realities. "
+            "Write as if the author lives and works in this location."
         )
 
-    # Build optional brief sections
-    optional_brief = "\n".join(filter(None, [pain_block, usp_block, wins_block, price_line]))
-    if optional_brief:
-        optional_brief = "\n" + optional_brief
+    # ── Brief intelligence section ────────────────────────────────────────────
+    intel_lines = []
+    if pain_points:
+        intel_lines.append(
+            f"PAIN POINTS — use verbatim (or close) in problem/warning hooks and beat 1 of problem_solution posts.\n"
+            f"  Known pains: {', '.join(pain_points)}"
+        )
+    if usps:
+        intel_lines.append(
+            f"UNIQUE SELLING POINTS — weave at least one USP into every authority and problem_solution post.\n"
+            f"  USPs: {', '.join(usps)}"
+        )
+    if wins:
+        intel_lines.append(
+            f"PAST WINS — use real numbers in social proof posts. Never invent figures.\n"
+            f"  Wins: {', '.join(wins)}"
+        )
+    if tagline:
+        intel_lines.append(
+            f"BRAND TAGLINE — you may echo this naturally at the close of one post (never force it).\n"
+            f"  Tagline: {tagline}"
+        )
+    intel_section = ("\n=== USING THE CLIENT BRIEF ===\n" + "\n\n".join(intel_lines)) if intel_lines else ""
 
     return f"""\
 === CLIENT BRIEF ===
@@ -277,17 +331,7 @@ def build_viral_prompt(client: "Client", count: int) -> str:
 - Posting Goals   : {goals_str}
 - Brand Colors    : Primary {primary} / Secondary {secondary}
 - Visual Style    : {image_style}{optional_brief}
-
-=== USING THE CLIENT BRIEF ===
-{f"""PAIN POINTS — use these verbatim (or close to it) inside problem/warning hooks and beat 1 of problem_solution posts. The reader must feel seen instantly.
-  Known pains: {', '.join(pain_points)}
-""" if pain_points else ""}
-{f"""UNIQUE SELLING POINTS — weave at least one USP into every authority and problem_solution post. These are facts, not boasts — state them plainly.
-  USPs: {', '.join(usps)}
-""" if usps else ""}
-{f"""PAST WINS — use real numbers and outcomes in social proof posts. Never invent figures; use what is provided here.
-  Wins: {', '.join(wins)}
-""" if wins else ""}
+{intel_section}
 
 === POST ASSIGNMENTS (follow exactly) ===
 {assignment_block}
@@ -306,7 +350,7 @@ AUTHORITY
   Purpose : Position {client.name} as the undisputed expert in {client.industry}
   Structure:
     Beat 1 -- Bold expert claim or counter-intuitive observation
-    Beat 2 -- Proof: draw from USPs or past wins above; experience, volume, or specific outcome
+    Beat 2 -- Proof: draw from USPs or past wins; experience, volume, or specific outcome
     Beat 3 -- What this means for the reader (the "so what")
   Avoid   : Humble-bragging. State credentials as facts, not boasts.
 
@@ -315,24 +359,30 @@ SOCIAL PROOF
   Structure:
     Beat 1 -- The before state: use a known pain point as the starting condition
     Beat 2 -- What changed (the intervention or service)
-    Beat 3 -- The specific outcome -- pull from past wins; use numbers wherever possible
+    Beat 3 -- The specific outcome — pull from past wins; use numbers wherever possible
   Avoid   : Vague outcomes like "they were very happy". Be specific.
 
 PROBLEM_SOLUTION
   Purpose : Make the reader feel their pain, then offer the relief
   Structure:
     Beat 1 -- Name a pain point so precisely the reader says "that's me"
-    Beat 2 -- Explain the root cause (most brands skip this -- don't)
+    Beat 2 -- Explain the root cause (most brands skip this — don't)
     Beat 3 -- Position {client.name}'s USP as the specific fix
   Avoid   : Jumping straight to the solution before the reader feels heard.
 
 BEHIND_THE_SCENES
-  Purpose : Build trust by showing what goes into the work
+  Purpose : Build trust by showing what goes into the work{bts_story_line}
   Structure:
     Beat 1 -- Pull back the curtain on one specific step in your process
     Beat 2 -- Explain why this step matters for quality or results
     Beat 3 -- Invite the reader in (make them feel part of it)
   Avoid   : Generic "we work hard" narratives. Show, don't tell.
+
+=== ABSOLUTE BANS (never write these) ===
+Phrases: "we are proud to announce" / "excited to share" / "game-changing" / "synergy" /
+"leverage" / "revolutionize" / "seamless" / "cutting-edge" / "best-in-class" /
+"world-class" / "innovative solutions" / "moving forward" / "at the end of the day" /
+"in today's world" / "in this day and age"{client_bans}
 
 === CAPTION FORMATTING RULES ===
 - Write 3 beats as 3 separate short paragraphs (1-3 lines each)
@@ -344,13 +394,20 @@ BEHIND_THE_SCENES
 {local_instruction}
 {platform_instruction}
 === CALL TO ACTION RULES ===
-- One sentence. Direct. Low friction.
+- One sentence. Direct. Low friction.{cta_dest_line}
 - Rotate CTA types across posts (no verb repeated twice):
     comment / DM / book / click / share / tag / visit / call / save / reply
 - Match the CTA to the post's goal and emotional trigger:
     urgency    -> "Book your slot before Friday."
     curiosity  -> "Comment 'INFO' and we'll send you the details."
     trust      -> "DM us and let's talk through your situation."
+
+=== NON-REPETITION RULES (enforced) ===
+- No two hooks may start with the same word.
+- No two captions may use the same sentence structure in their opening line.
+- No two posts may share the same emotional trigger.
+- No two CTAs may use the same verb.
+- Each post must feel like it was written on a different day for a different purpose.
 
 === HASHTAG RULES ===
 Use exactly 6-9 hashtags per post. Build each set using this 3-layer formula:

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, JSON, String
+from sqlalchemy import Boolean, DateTime, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -32,6 +32,19 @@ class Client(Base):
     past_wins: Mapped[list | None] = mapped_column(JSON, nullable=True)
     platforms: Mapped[list | None] = mapped_column(JSON, nullable=True)
     price_positioning: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Brand identity
+    brand_tagline: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    words_to_avoid: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    founding_story: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cta_destination: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Operational
+    monthly_post_quota: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Publishing / scheduling
+    timezone: Mapped[str] = mapped_column(String(100), nullable=False, default="UTC")
+    facebook_page_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    instagram_account_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    tiktok_account_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
