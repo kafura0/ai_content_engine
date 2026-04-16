@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import PostCard from '@/components/PostCard'
-import { getClients, triggerGeneration, getPosts } from '@/lib/api'
+import { getClients, generateContent } from '@/lib/api'
 
 function Spinner({ size = 5 }) {
   return (
@@ -18,12 +18,12 @@ function GeneratePage() {
   const searchParams = useSearchParams()
   const preselected = searchParams.get('client')
 
-  const [clients, setClients] = useState([])
+  const [clients,  setClients]  = useState([])
   const [clientId, setClientId] = useState(preselected || '')
-  const [posts, setPosts] = useState([])
-  const [generating, setGenerating] = useState(false)
-  const [error, setError] = useState(null)
-  const pollRef = useRef(null)
+  const [count,    setCount]    = useState(5)
+  const [posts,    setPosts]    = useState([])
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState(null)
 
   useEffect(() => {
     getClients()
@@ -31,63 +31,25 @@ function GeneratePage() {
       .catch(() => {})
   }, [])
 
-  // Clean up polling on unmount
-  useEffect(() => {
-    return () => { if (pollRef.current) clearInterval(pollRef.current) }
-  }, [])
-
   function handleClientChange(e) {
     setClientId(e.target.value)
     setPosts([])
     setError(null)
-    if (pollRef.current) clearInterval(pollRef.current)
-    setGenerating(false)
   }
 
   async function handleGenerate() {
     if (!clientId) return
-    if (pollRef.current) clearInterval(pollRef.current)
-
-    setGenerating(true)
+    setLoading(true)
     setError(null)
     setPosts([])
-
-    // Record baseline post count before triggering
-    let baseline = 0
     try {
-      const existing = await getPosts(clientId)
-      baseline = Array.isArray(existing) ? existing.length : 0
-    } catch (_) {}
-
-    // Trigger n8n workflow
-    try {
-      await triggerGeneration(clientId)
+      const data = await generateContent(clientId, count)
+      setPosts(data.posts || [])
     } catch (e) {
       setError(e.message)
-      setGenerating(false)
-      return
+    } finally {
+      setLoading(false)
     }
-
-    // Poll every 5s for new posts (max 2 minutes)
-    let attempts = 0
-    pollRef.current = setInterval(async () => {
-      attempts++
-      if (attempts > 24) {
-        clearInterval(pollRef.current)
-        setGenerating(false)
-        setError('Generation timed out. Check n8n for status.')
-        return
-      }
-      try {
-        const data = await getPosts(clientId)
-        if (Array.isArray(data) && data.length > baseline) {
-          const newPosts = data.slice(0, data.length - baseline)
-          setPosts(newPosts)
-          clearInterval(pollRef.current)
-          setGenerating(false)
-        }
-      } catch (_) {}
-    }, 5000)
   }
 
   const selected = clients.find(c => c.id === clientId)
@@ -97,7 +59,7 @@ function GeneratePage() {
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900">Generate Content</h1>
-        <p className="text-sm text-slate-500 mt-1">Trigger your n8n AI workflow to create viral posts for a client</p>
+        <p className="text-sm text-slate-500 mt-1">Create viral social media posts for a client</p>
       </div>
 
       {/* Controls */}
@@ -105,7 +67,7 @@ function GeneratePage() {
         <div className="flex flex-col sm:flex-row gap-4 items-end">
           <div className="flex-1">
             <label className="block text-xs font-medium text-slate-700 mb-1.5">Client</label>
-            <select value={clientId} onChange={handleClientChange} disabled={generating}
+            <select value={clientId} onChange={handleClientChange} disabled={loading}
               className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50">
               <option value="">— Select a client —</option>
               {clients.map(c => (
@@ -113,9 +75,15 @@ function GeneratePage() {
               ))}
             </select>
           </div>
-          <button onClick={handleGenerate} disabled={!clientId || generating}
+          <div className="w-28">
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">Posts</label>
+            <input type="number" min={1} max={10} value={count}
+              onChange={e => setCount(Number(e.target.value))} disabled={loading}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50" />
+          </div>
+          <button onClick={handleGenerate} disabled={!clientId || loading}
             className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap">
-            {generating ? <><Spinner size={4} /> Generating...</> : '✦ Generate'}
+            {loading ? <><Spinner size={4} /> Generating...</> : '✦ Generate'}
           </button>
         </div>
 
@@ -125,7 +93,8 @@ function GeneratePage() {
             {colors.length > 0 && (
               <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1 rounded-full">
                 {colors.slice(0, 6).map((c, i) => (
-                  <span key={i} className="w-3 h-3 rounded-full border border-slate-200" style={{ backgroundColor: c }} />
+                  <span key={i} className="w-3 h-3 rounded-full border border-slate-200"
+                    style={{ backgroundColor: c }} />
                 ))}
                 <span className="text-xs text-slate-500 ml-0.5">Brand colors</span>
               </div>
@@ -147,18 +116,18 @@ function GeneratePage() {
       )}
 
       {/* Loading */}
-      {generating && (
+      {loading && (
         <div className="text-center py-24">
           <div className="inline-flex flex-col items-center gap-4">
             <Spinner size={10} />
             <p className="text-slate-700 font-medium">Generating content...</p>
-            <p className="text-slate-400 text-sm">n8n is orchestrating your AI workflow. Checking every 5 seconds.</p>
+            <p className="text-slate-400 text-sm">Claude is writing your posts. Takes 20–40 seconds.</p>
           </div>
         </div>
       )}
 
       {/* Results */}
-      {!generating && posts.length > 0 && (
+      {!loading && posts.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-semibold text-slate-900">
@@ -174,7 +143,7 @@ function GeneratePage() {
       )}
 
       {/* Empty */}
-      {!generating && posts.length === 0 && !error && (
+      {!loading && posts.length === 0 && !error && (
         <div className="text-center py-24">
           <div className="text-5xl mb-4">✨</div>
           <p className="text-slate-500 text-sm">Select a client and click Generate to start.</p>

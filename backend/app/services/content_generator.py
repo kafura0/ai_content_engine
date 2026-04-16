@@ -49,6 +49,7 @@ async def generate_content_for_client(
             image_prompt=raw.get("image_prompt", ""),
             image_url=image_url,
             content_type=raw.get("content_type"),
+            status="completed",
         )
         posts.append(post)
 
