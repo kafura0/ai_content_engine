@@ -1,9 +1,27 @@
-import Link from 'next/link'
+'use client'
 
-export default function ClientCard({ client }) {
+import Link from 'next/link'
+import { useState } from 'react'
+import { deleteClient } from '@/lib/api'
+
+export default function ClientCard({ client, onDeleted }) {
   const colors   = Array.isArray(client.brand_colors) ? client.brand_colors : []
   const primary  = colors[0] || '#6366F1'
   const services = Array.isArray(client.services) ? client.services : []
+
+  const [confirming, setConfirming] = useState(false)
+  const [deleting,   setDeleting]   = useState(false)
+
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      await deleteClient(client.id)
+      onDeleted?.(client.id)
+    } catch {
+      setDeleting(false)
+      setConfirming(false)
+    }
+  }
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 hover:shadow-md transition-all duration-200 flex flex-col">
@@ -61,6 +79,25 @@ export default function ClientCard({ client }) {
           className="flex-1 text-center text-xs font-medium bg-slate-100 text-slate-700 py-2 px-3 rounded-lg hover:bg-slate-200 transition-colors">
           View Posts
         </Link>
+
+        {!confirming ? (
+          <button onClick={() => setConfirming(true)}
+            className="text-xs font-medium text-slate-400 hover:text-red-500 py-2 px-2 rounded-lg hover:bg-red-50 transition-colors"
+            title="Delete client">
+            ✕
+          </button>
+        ) : (
+          <div className="flex gap-1">
+            <button onClick={handleDelete} disabled={deleting}
+              className="text-xs font-medium bg-red-500 text-white py-2 px-2.5 rounded-lg hover:bg-red-600 disabled:opacity-50 transition-colors">
+              {deleting ? '…' : 'Delete'}
+            </button>
+            <button onClick={() => setConfirming(false)} disabled={deleting}
+              className="text-xs font-medium bg-slate-100 text-slate-600 py-2 px-2.5 rounded-lg hover:bg-slate-200 transition-colors">
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

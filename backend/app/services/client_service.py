@@ -25,6 +25,13 @@ async def list_clients(db: AsyncSession) -> list[Client]:
     return list(result.scalars().all())
 
 
+async def delete_client(db: AsyncSession, client_id: str) -> None:
+    client = await db.get(Client, client_id)
+    if client:
+        await db.delete(client)
+        await db.commit()
+
+
 async def get_posts_for_client(db: AsyncSession, client_id: str) -> list[Post]:
     result = await db.execute(
         select(Post)

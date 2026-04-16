@@ -41,6 +41,14 @@ export async function triggerGeneration(clientId) {
   return res.json()
 }
 
+export async function deleteClient(clientId) {
+  const res = await fetch(`${BASE}/clients/${clientId}`, { method: 'DELETE' })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Failed to delete client')
+  }
+}
+
 export async function getPosts(clientId) {
   const res = await fetch(`${BASE}/posts/${clientId}`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to fetch posts')
