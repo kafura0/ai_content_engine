@@ -2,15 +2,28 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { deleteClient } from '@/lib/api'
+import { deleteClient, setClientActive } from '@/lib/api'
 
-export default function ClientCard({ client, onDeleted }) {
+export default function ClientCard({ client, onDeleted, onUpdated }) {
   const colors   = Array.isArray(client.brand_colors) ? client.brand_colors : []
   const primary  = colors[0] || '#6366F1'
   const services = Array.isArray(client.services) ? client.services : []
 
   const [confirming, setConfirming] = useState(false)
   const [deleting,   setDeleting]   = useState(false)
+  const [toggling,   setToggling]   = useState(false)
+
+  const isActive = client.is_active !== false  // default true for old records
+
+  async function handleToggleActive() {
+    setToggling(true)
+    try {
+      const updated = await setClientActive(client.id, !isActive)
+      onUpdated?.(updated)
+    } finally {
+      setToggling(false)
+    }
+  }
 
   async function handleDelete() {
     setDeleting(true)
@@ -24,25 +37,40 @@ export default function ClientCard({ client, onDeleted }) {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 hover:shadow-md transition-all duration-200 flex flex-col">
+    <div className={`bg-white rounded-2xl shadow-sm border p-6 transition-all duration-200 flex flex-col ${
+      isActive ? 'border-slate-100 hover:shadow-md' : 'border-slate-200 opacity-60'
+    }`}>
 
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div
           className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
-          style={{ backgroundColor: primary }}
+          style={{ backgroundColor: isActive ? primary : '#94a3b8' }}
         >
           {client.name.charAt(0).toUpperCase()}
         </div>
-        <div className="flex items-center gap-1 flex-wrap justify-end max-w-[60%]">
-          {colors.slice(0, 5).map((c, i) => (
+        <div className="flex items-center gap-1.5 flex-wrap justify-end max-w-[65%]">
+          {/* Active / Inactive badge */}
+          <button
+            onClick={handleToggleActive}
+            disabled={toggling}
+            title={isActive ? 'Click to deactivate' : 'Click to activate'}
+            className={`text-xs font-medium px-2 py-0.5 rounded-full transition-colors disabled:opacity-50 ${
+              isActive
+                ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            }`}
+          >
+            {toggling ? '…' : isActive ? 'Active' : 'Inactive'}
+          </button>
+          {colors.slice(0, 4).map((c, i) => (
             <div key={i} className="w-3 h-3 rounded-full border border-slate-200 flex-shrink-0"
               style={{ backgroundColor: c }} />
           ))}
-          {colors.length > 5 && (
-            <span className="text-xs text-slate-400">+{colors.length - 5}</span>
+          {colors.length > 4 && (
+            <span className="text-xs text-slate-400">+{colors.length - 4}</span>
           )}
-          <span className="text-xs text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full ml-1 capitalize">
+          <span className="text-xs text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full capitalize">
             {client.tone_of_voice}
           </span>
         </div>
@@ -71,10 +99,17 @@ export default function ClientCard({ client, onDeleted }) {
 
       {/* Actions */}
       <div className="flex gap-2 mt-auto pt-4 border-t border-slate-50">
-        <Link href={`/generate?client=${client.id}`}
-          className="flex-1 text-center text-xs font-medium bg-indigo-600 text-white py-2 px-3 rounded-lg hover:bg-indigo-700 transition-colors">
-          Generate
-        </Link>
+        {isActive ? (
+          <Link href={`/generate?client=${client.id}`}
+            className="flex-1 text-center text-xs font-medium bg-indigo-600 text-white py-2 px-3 rounded-lg hover:bg-indigo-700 transition-colors">
+            Generate
+          </Link>
+        ) : (
+          <span className="flex-1 text-center text-xs font-medium bg-slate-100 text-slate-400 py-2 px-3 rounded-lg cursor-not-allowed"
+            title="Activate client to generate content">
+            Generate
+          </span>
+        )}
         <Link href={`/posts?client=${client.id}`}
           className="flex-1 text-center text-xs font-medium bg-slate-100 text-slate-700 py-2 px-3 rounded-lg hover:bg-slate-200 transition-colors">
           View Posts

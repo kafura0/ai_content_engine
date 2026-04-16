@@ -36,6 +36,10 @@ class ClientCreate(BaseModel):
         return v
 
 
+class ClientUpdate(BaseModel):
+    is_active: bool
+
+
 class ClientResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -50,6 +54,7 @@ class ClientResponse(BaseModel):
     services: list | None
     location: str | None
     posting_goals: list | None
+    is_active: bool
     created_at: datetime
 
 

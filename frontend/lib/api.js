@@ -41,6 +41,19 @@ export async function triggerGeneration(clientId) {
   return res.json()
 }
 
+export async function setClientActive(clientId, isActive) {
+  const res = await fetch(`${BASE}/clients/${clientId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_active: isActive }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Failed to update client')
+  }
+  return res.json()
+}
+
 export async function deleteClient(clientId) {
   const res = await fetch(`${BASE}/clients/${clientId}`, { method: 'DELETE' })
   if (!res.ok) {

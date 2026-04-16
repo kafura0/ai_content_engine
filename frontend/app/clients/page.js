@@ -250,7 +250,8 @@ export default function ClientsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {clients.map(c => (
             <ClientCard key={c.id} client={c}
-              onDeleted={id => setClients(prev => prev.filter(x => x.id !== id))} />
+              onDeleted={id => setClients(prev => prev.filter(x => x.id !== id))}
+              onUpdated={updated => setClients(prev => prev.map(x => x.id === updated.id ? updated : x))} />
           ))}
         </div>
       )}

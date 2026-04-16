@@ -21,6 +21,8 @@ async def generate_content(
     client = await get_client(db, client_id)
     if not client:
         raise HTTPException(status_code=404, detail=f"Client '{client_id}' not found.")
+    if not client.is_active:
+        raise HTTPException(status_code=403, detail=f"Client '{client.name}' is inactive. Activate the client to generate content.")
 
     posts = await generate_content_for_client(db, client, count)
 

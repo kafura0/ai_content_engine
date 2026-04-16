@@ -25,6 +25,16 @@ async def list_clients(db: AsyncSession) -> list[Client]:
     return list(result.scalars().all())
 
 
+async def set_client_active(db: AsyncSession, client_id: str, is_active: bool) -> Client | None:
+    client = await db.get(Client, client_id)
+    if not client:
+        return None
+    client.is_active = is_active
+    await db.commit()
+    await db.refresh(client)
+    return client
+
+
 async def delete_client(db: AsyncSession, client_id: str) -> None:
     client = await db.get(Client, client_id)
     if client:
