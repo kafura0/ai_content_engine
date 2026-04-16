@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react'
 import ClientCard from '@/components/ClientCard'
 import { getClients, createClient } from '@/lib/api'
 
-const TONES  = ['professional', 'casual', 'premium', 'playful', 'bold', 'inspirational']
-const STYLES = ['cinematic', 'realistic', 'minimal', 'bold', 'editorial', 'lifestyle']
-const GOALS  = ['engagement', 'leads', 'awareness', 'retention']
+const TONES     = ['professional', 'casual', 'premium', 'playful', 'bold', 'inspirational']
+const STYLES    = ['cinematic', 'realistic', 'minimal', 'bold', 'editorial', 'lifestyle']
+const GOALS     = ['engagement', 'leads', 'awareness', 'retention']
+const PLATFORMS = ['instagram', 'linkedin', 'facebook', 'tiktok']
+const PRICES    = ['budget', 'mid-range', 'premium', 'luxury']
 
 const blank = {
   name: '', industry: '', tone_of_voice: 'professional',
@@ -14,6 +16,11 @@ const blank = {
   _color_picker: '#6366F1',
   image_style: 'cinematic', services: '', target_audience: '',
   location: '', posting_goals: ['leads'], logo_url: '',
+  audience_pain_points: '',
+  unique_selling_points: '',
+  past_wins: '',
+  platforms: [],
+  price_positioning: '',
 }
 
 export default function ClientsPage() {
@@ -52,6 +59,15 @@ export default function ClientsPage() {
     }))
   }
 
+  function togglePlatform(p) {
+    setForm(prev => ({
+      ...prev,
+      platforms: prev.platforms.includes(p)
+        ? prev.platforms.filter(x => x !== p)
+        : [...prev.platforms, p],
+    }))
+  }
+
   function addColor() {
     const color = form._color_picker.trim()
     if (!color || form.brand_colors.length >= 10) return
@@ -63,22 +79,32 @@ export default function ClientsPage() {
     setForm(p => ({ ...p, brand_colors: p.brand_colors.filter((_, i) => i !== index) }))
   }
 
+  // Parse a textarea of newline/comma separated items into a list
+  function parseList(str) {
+    return str.split(/[\n,]/).map(s => s.trim()).filter(Boolean)
+  }
+
   async function submit(e) {
     e.preventDefault()
     setSubmitting(true)
     setFormError(null)
     try {
       await createClient({
-        name:            form.name,
-        industry:        form.industry,
-        tone_of_voice:   form.tone_of_voice,
-        brand_colors:    form.brand_colors.length > 0 ? form.brand_colors : null,
-        image_style:     form.image_style,
-        services:        form.services.split(',').map(s => s.trim()).filter(Boolean),
-        target_audience: form.target_audience,
-        location:        form.location || null,
-        posting_goals:   form.posting_goals,
-        logo_url:        form.logo_url || null,
+        name:                  form.name,
+        industry:              form.industry,
+        tone_of_voice:         form.tone_of_voice,
+        brand_colors:          form.brand_colors.length > 0 ? form.brand_colors : null,
+        image_style:           form.image_style,
+        services:              parseList(form.services),
+        target_audience:       form.target_audience,
+        location:              form.location || null,
+        posting_goals:         form.posting_goals,
+        logo_url:              form.logo_url || null,
+        audience_pain_points:  form.audience_pain_points ? parseList(form.audience_pain_points) : null,
+        unique_selling_points: form.unique_selling_points ? parseList(form.unique_selling_points) : null,
+        past_wins:             form.past_wins ? parseList(form.past_wins) : null,
+        platforms:             form.platforms.length > 0 ? form.platforms : null,
+        price_positioning:     form.price_positioning || null,
       })
       setForm(blank)
       setShowForm(false)
@@ -114,6 +140,7 @@ export default function ClientsPage() {
           <h2 className="text-base font-semibold text-slate-900 mb-6">New Client Profile</h2>
           <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
+            {/* ── Core ── */}
             <Field label="Business Name *">
               <input name="name" value={form.name} onChange={set} required
                 placeholder="Apex Electrical" className={inp} />
@@ -136,32 +163,17 @@ export default function ClientsPage() {
               </select>
             </Field>
 
-            {/* Brand Colors — array, max 10 */}
+            {/* Brand Colors */}
             <div className="md:col-span-2">
               <Field label={`Brand Colors (${form.brand_colors.length}/10)`}>
                 <div className="space-y-3">
                   <div className="flex gap-2">
-                    <input
-                      type="color"
-                      name="_color_picker"
-                      value={form._color_picker}
-                      onChange={set}
-                      className="w-10 h-10 rounded-lg cursor-pointer border border-slate-200 p-0.5"
-                    />
-                    <input
-                      type="text"
-                      name="_color_picker"
-                      value={form._color_picker}
-                      onChange={set}
-                      placeholder="#6366F1"
-                      className={`${inp} flex-1 font-mono`}
-                    />
-                    <button
-                      type="button"
-                      onClick={addColor}
-                      disabled={form.brand_colors.length >= 10}
-                      className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
+                    <input type="color" name="_color_picker" value={form._color_picker} onChange={set}
+                      className="w-10 h-10 rounded-lg cursor-pointer border border-slate-200 p-0.5" />
+                    <input type="text" name="_color_picker" value={form._color_picker} onChange={set}
+                      placeholder="#6366F1" className={`${inp} flex-1 font-mono`} />
+                    <button type="button" onClick={addColor} disabled={form.brand_colors.length >= 10}
+                      className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                       Add
                     </button>
                   </div>
@@ -169,13 +181,10 @@ export default function ClientsPage() {
                     <div className="flex flex-wrap gap-2">
                       {form.brand_colors.map((color, i) => (
                         <div key={i} className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-full">
-                          <span className="w-4 h-4 rounded-full border border-slate-200 flex-shrink-0"
-                            style={{ backgroundColor: color }} />
+                          <span className="w-4 h-4 rounded-full border border-slate-200 flex-shrink-0" style={{ backgroundColor: color }} />
                           <span className="text-xs font-mono text-slate-600">{color}</span>
                           <button type="button" onClick={() => removeColor(i)}
-                            className="text-slate-400 hover:text-red-400 ml-0.5 text-base leading-none transition-colors">
-                            ×
-                          </button>
+                            className="text-slate-400 hover:text-red-400 ml-0.5 text-base leading-none transition-colors">×</button>
                         </div>
                       ))}
                     </div>
@@ -186,7 +195,7 @@ export default function ClientsPage() {
 
             <Field label="Target Audience *">
               <input name="target_audience" value={form.target_audience} onChange={set} required
-                placeholder="homeowners in Nairobi" className={inp} />
+                placeholder="homeowners in Nairobi aged 30–50" className={inp} />
             </Field>
 
             <Field label="Services (comma separated) *">
@@ -204,6 +213,7 @@ export default function ClientsPage() {
                 placeholder="https://..." className={inp} />
             </Field>
 
+            {/* Posting Goals */}
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-slate-700 mb-2">Posting Goals *</label>
               <div className="flex flex-wrap gap-2">
@@ -217,6 +227,72 @@ export default function ClientsPage() {
                     {cap(g)}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* ── AI Quality Fields ── */}
+            <div className="md:col-span-2 pt-2 border-t border-slate-100">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">AI Content Intelligence</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+                <Field label="Audience Pain Points">
+                  <textarea name="audience_pain_points" value={form.audience_pain_points} onChange={set} rows={3}
+                    placeholder={"Contractors disappear mid-project\nCosts always go over budget\nHard to find trusted tradespeople"}
+                    className={`${inp} resize-none`} />
+                  <p className="text-xs text-slate-400 mt-1">One per line — the AI will use these verbatim in hooks.</p>
+                </Field>
+
+                <Field label="Unique Selling Points">
+                  <textarea name="unique_selling_points" value={form.unique_selling_points} onChange={set} rows={3}
+                    placeholder={"10-year workmanship guarantee\nFixed-price contracts, no surprises\nOnly KEBS-certified team in the region"}
+                    className={`${inp} resize-none`} />
+                  <p className="text-xs text-slate-400 mt-1">One per line — used in authority and problem/solution posts.</p>
+                </Field>
+
+                <Field label="Past Wins & Proof Points">
+                  <textarea name="past_wins" value={form.past_wins} onChange={set} rows={3}
+                    placeholder={"Completed 200+ projects since 2018\nSaved a client KES 2M on Phase 2\n98% of clients refer us to someone else"}
+                    className={`${inp} resize-none`} />
+                  <p className="text-xs text-slate-400 mt-1">Real numbers — used in social proof posts instead of invented outcomes.</p>
+                </Field>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-2">Price Positioning</label>
+                    <div className="flex flex-wrap gap-2">
+                      {PRICES.map(p => (
+                        <button key={p} type="button"
+                          onClick={() => setForm(prev => ({ ...prev, price_positioning: prev.price_positioning === p ? '' : p }))}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                            form.price_positioning === p
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}>
+                          {cap(p)}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1.5">Shapes value language across all posts.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-2">Target Platforms</label>
+                    <div className="flex flex-wrap gap-2">
+                      {PLATFORMS.map(p => (
+                        <button key={p} type="button" onClick={() => togglePlatform(p)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                            form.platforms.includes(p)
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}>
+                          {cap(p)}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1.5">Each platform gets format-specific captions.</p>
+                  </div>
+                </div>
+
               </div>
             </div>
 

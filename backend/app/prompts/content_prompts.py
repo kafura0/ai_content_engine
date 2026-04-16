@@ -142,6 +142,46 @@ _POST_SCHEMA = """\
 
 # ─── Prompt Builder ─────────────────────────────────────────────────────────────
 
+_PRICE_POSITIONING_GUIDE = {
+    "budget": (
+        "value-forward and accessible. Emphasise affordability, transparency, and no hidden costs. "
+        "Language: 'fair prices', 'no surprises', 'quality you can afford'."
+    ),
+    "mid-range": (
+        "quality-to-value balance. Emphasise reliability, professionalism, and consistent results. "
+        "Language: 'worth every shilling', 'the right investment', 'trusted by hundreds'."
+    ),
+    "premium": (
+        "quality-first and results-driven. Emphasise craftsmanship, expertise, and superior outcomes. "
+        "Language: 'uncompromising quality', 'built to last', 'the difference shows'."
+    ),
+    "luxury": (
+        "exclusivity and transformation. Emphasise the elite experience, bespoke service, and prestige. "
+        "Language: 'for those who refuse to settle', 'by invitation', 'an experience, not a transaction'."
+    ),
+}
+
+_PLATFORM_GUIDE = {
+    "instagram": (
+        "Visual-first. Hook must be punchy (under 10 words). Caption can use line breaks freely. "
+        "Emoji are welcome if they reinforce meaning. Hashtags go at the end."
+    ),
+    "linkedin": (
+        "Professional narrative. Hook can be longer (1-2 sentences). "
+        "Write in first person from the brand's voice. No emoji. Focus on insight and credibility. "
+        "Hashtags: max 3-5, appended at the end."
+    ),
+    "facebook": (
+        "Conversational and community-driven. Slightly longer captions are fine. "
+        "Ask a direct question in the CTA to drive comments. Emoji acceptable."
+    ),
+    "tiktok": (
+        "Hook must be ultra-short (under 7 words) — the first line IS the scroll-stopper. "
+        "Conversational, fast-paced, and trend-aware. Speak directly to the camera in caption voice."
+    ),
+}
+
+
 def build_viral_prompt(client: "Client", count: int) -> str:
     services_str = ", ".join(client.services or [])
     goals_str = ", ".join(client.posting_goals or [])
@@ -160,6 +200,38 @@ def build_viral_prompt(client: "Client", count: int) -> str:
 
     tone_key = (client.tone_of_voice or "professional").lower()
     tone_description = _TONE_GUIDE.get(tone_key, client.tone_of_voice)
+
+    # New fields
+    pain_points = client.audience_pain_points or []
+    usps = client.unique_selling_points or []
+    wins = client.past_wins or []
+    platforms = client.platforms or []
+    price_pos = (client.price_positioning or "").lower()
+
+    pain_block = (
+        "- Audience Pain Points:\n" + "\n".join(f"    • {p}" for p in pain_points)
+        if pain_points else ""
+    )
+    usp_block = (
+        "- Unique Selling Points:\n" + "\n".join(f"    • {u}" for u in usps)
+        if usps else ""
+    )
+    wins_block = (
+        "- Past Wins & Proof Points:\n" + "\n".join(f"    • {w}" for w in wins)
+        if wins else ""
+    )
+
+    price_line = ""
+    if price_pos and price_pos in _PRICE_POSITIONING_GUIDE:
+        price_line = f"- Price Positioning : {price_pos.capitalize()} — {_PRICE_POSITIONING_GUIDE[price_pos]}"
+
+    platform_instruction = ""
+    if platforms:
+        platform_lines = "\n".join(
+            f"  {p.upper()}: {_PLATFORM_GUIDE.get(p.lower(), 'Standard social media format.')}"
+            for p in platforms
+        )
+        platform_instruction = f"\n=== PLATFORM FORMATTING RULES ===\nAdapt every post for these platforms:\n{platform_lines}\n"
 
     # Pair each post with a content type AND a hook style — both rotate independently
     assignments = []
@@ -189,6 +261,11 @@ def build_viral_prompt(client: "Client", count: int) -> str:
             "cost realities, Swahili phrases (sparingly), or Kenyan consumer behaviour."
         )
 
+    # Build optional brief sections
+    optional_brief = "\n".join(filter(None, [pain_block, usp_block, wins_block, price_line]))
+    if optional_brief:
+        optional_brief = "\n" + optional_brief
+
     return f"""\
 === CLIENT BRIEF ===
 - Business Name   : {client.name}
@@ -199,7 +276,18 @@ def build_viral_prompt(client: "Client", count: int) -> str:
 {location_line}
 - Posting Goals   : {goals_str}
 - Brand Colors    : Primary {primary} / Secondary {secondary}
-- Visual Style    : {image_style}
+- Visual Style    : {image_style}{optional_brief}
+
+=== USING THE CLIENT BRIEF ===
+{f"""PAIN POINTS — use these verbatim (or close to it) inside problem/warning hooks and beat 1 of problem_solution posts. The reader must feel seen instantly.
+  Known pains: {', '.join(pain_points)}
+""" if pain_points else ""}
+{f"""UNIQUE SELLING POINTS — weave at least one USP into every authority and problem_solution post. These are facts, not boasts — state them plainly.
+  USPs: {', '.join(usps)}
+""" if usps else ""}
+{f"""PAST WINS — use real numbers and outcomes in social proof posts. Never invent figures; use what is provided here.
+  Wins: {', '.join(wins)}
+""" if wins else ""}
 
 === POST ASSIGNMENTS (follow exactly) ===
 {assignment_block}
@@ -218,24 +306,24 @@ AUTHORITY
   Purpose : Position {client.name} as the undisputed expert in {client.industry}
   Structure:
     Beat 1 -- Bold expert claim or counter-intuitive observation
-    Beat 2 -- Proof: experience, volume of work, or specific outcome achieved
+    Beat 2 -- Proof: draw from USPs or past wins above; experience, volume, or specific outcome
     Beat 3 -- What this means for the reader (the "so what")
   Avoid   : Humble-bragging. State credentials as facts, not boasts.
 
 SOCIAL PROOF
   Purpose : Show transformation through a real (or representative) client story
   Structure:
-    Beat 1 -- The before state (the problem or starting point)
+    Beat 1 -- The before state: use a known pain point as the starting condition
     Beat 2 -- What changed (the intervention or service)
-    Beat 3 -- The specific outcome -- use numbers wherever possible
+    Beat 3 -- The specific outcome -- pull from past wins; use numbers wherever possible
   Avoid   : Vague outcomes like "they were very happy". Be specific.
 
 PROBLEM_SOLUTION
   Purpose : Make the reader feel their pain, then offer the relief
   Structure:
-    Beat 1 -- Name the problem so precisely the reader says "that's me"
+    Beat 1 -- Name a pain point so precisely the reader says "that's me"
     Beat 2 -- Explain the root cause (most brands skip this -- don't)
-    Beat 3 -- Position {client.name}'s service as the specific fix
+    Beat 3 -- Position {client.name}'s USP as the specific fix
   Avoid   : Jumping straight to the solution before the reader feels heard.
 
 BEHIND_THE_SCENES
@@ -254,7 +342,7 @@ BEHIND_THE_SCENES
 - Sentence rhythm: mix short punchy lines with one slightly longer explanatory line
 - Tone must match: {client.tone_of_voice} -- {tone_description}
 {local_instruction}
-
+{platform_instruction}
 === CALL TO ACTION RULES ===
 - One sentence. Direct. Low friction.
 - Rotate CTA types across posts (no verb repeated twice):

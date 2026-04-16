@@ -27,6 +27,11 @@ class Client(Base):
     services: Mapped[list | None] = mapped_column(JSON, nullable=True)
     location: Mapped[str | None] = mapped_column(String(255), nullable=True)
     posting_goals: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    audience_pain_points: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    unique_selling_points: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    past_wins: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    platforms: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    price_positioning: Mapped[str | None] = mapped_column(String(50), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

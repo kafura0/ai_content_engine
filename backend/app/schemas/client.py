@@ -27,6 +27,26 @@ class ClientCreate(BaseModel):
         min_length=1,
         description="e.g. engagement, leads, awareness, retention",
     )
+    audience_pain_points: list[str] | None = Field(
+        None,
+        description="Specific frustrations the target audience faces",
+    )
+    unique_selling_points: list[str] | None = Field(
+        None,
+        description="What makes this client different from competitors",
+    )
+    past_wins: list[str] | None = Field(
+        None,
+        description="Real outcomes, numbers, or achievements to reference",
+    )
+    platforms: list[str] | None = Field(
+        None,
+        description="e.g. instagram, linkedin, facebook, tiktok",
+    )
+    price_positioning: str | None = Field(
+        None,
+        description="budget / mid-range / premium / luxury",
+    )
 
     @field_validator("brand_colors")
     @classmethod
@@ -54,6 +74,11 @@ class ClientResponse(BaseModel):
     services: list | None
     location: str | None
     posting_goals: list | None
+    audience_pain_points: list | None
+    unique_selling_points: list | None
+    past_wins: list | None
+    platforms: list | None
+    price_positioning: str | None
     is_active: bool
     created_at: datetime
 
