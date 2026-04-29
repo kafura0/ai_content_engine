@@ -17,6 +17,8 @@ services:
       IMAGE_RETRY_COUNT: ${IMAGE_RETRY_COUNT:-3}
       # Points to the n8n container by service name — works inside Docker network
       N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://n8n:5678/webhook/generate-content}
+      # Optional — leave empty for dev mode (no auth required)
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
@@ -36,6 +38,9 @@ services:
         # Baked in at build time — use localhost for local testing,
         # your real domain for production builds
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        # Optional — leave empty to run in dev mode (no login required)
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
     container_name: ai_content_engine_frontend
     restart: unless-stopped
     ports:

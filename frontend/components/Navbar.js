@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { DEV_MODE, supabase } from '@/lib/supabase'
 
 const links = [
   { href: '/clients',  label: 'Clients'  },
@@ -45,12 +45,14 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <button
-              onClick={handleLogout}
-              className="ml-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors"
-            >
-              Log out
-            </button>
+            {!DEV_MODE && (
+              <button
+                onClick={handleLogout}
+                className="ml-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+              >
+                Log out
+              </button>
+            )}
           </div>
         </div>
       </div>

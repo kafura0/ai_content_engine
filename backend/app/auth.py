@@ -4,18 +4,30 @@ from jose import JWTError, jwt
 
 from app.config import settings
 
-_bearer = HTTPBearer()
+# auto_error=False so we can handle missing header ourselves (needed for dev bypass)
+_bearer = HTTPBearer(auto_error=False)
+
+# Fixed user ID used when SUPABASE_JWT_SECRET is not set (local dev / prototyping)
+_DEV_USER_ID = "dev-local-user"
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> str:
-    """Verify Supabase JWT and return the user's UUID (sub claim)."""
+    """Return the authenticated user's ID.
+
+    Dev mode: when SUPABASE_JWT_SECRET is not configured, skip verification
+    and return a fixed local user ID so the full app works without Supabase.
+    """
     if not settings.supabase_jwt_secret:
+        return _DEV_USER_ID
+
+    if not credentials:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Authentication is not configured (SUPABASE_JWT_SECRET missing).",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header required.",
         )
+
     try:
         payload = jwt.decode(
             credentials.credentials,

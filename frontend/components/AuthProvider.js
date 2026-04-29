@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { DEV_MODE, supabase } from '@/lib/supabase'
 
 export default function AuthProvider({ children }) {
-  const [ready, setReady] = useState(false)
-  const router = useRouter()
+  // In dev mode there is no Supabase — skip auth entirely, go straight to app
+  const [ready, setReady] = useState(DEV_MODE)
+  const router   = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
+    if (DEV_MODE) return
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session && pathname !== '/login') {
         router.replace('/login')

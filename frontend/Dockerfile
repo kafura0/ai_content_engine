@@ -14,6 +14,11 @@ WORKDIR /app
 # NEXT_PUBLIC_* vars are baked in at build time — must be passed as build args
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+# Optional — omit or leave empty to run without auth (dev/prototype mode)
+ARG NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
 
 COPY package.json package-lock.json* ./
 RUN npm ci
