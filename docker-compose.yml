@@ -11,16 +11,21 @@ services:
       - "8000:8000"
     environment:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      OPENROUTER_TEXT_MODEL: ${OPENROUTER_TEXT_MODEL:-anthropic/claude-3.5-haiku}
-      OPENROUTER_IMAGE_MODEL: ${OPENROUTER_IMAGE_MODEL:-google/gemini-2.5-flash-image}
+      OPENROUTER_TEXT_MODEL: ${OPENROUTER_TEXT_MODEL:-anthropic/claude-3-5-haiku}
+      OPENROUTER_IMAGE_MODEL: ${OPENROUTER_IMAGE_MODEL:-google/gemini-2.0-flash-exp:free}
       DATABASE_URL: ${DATABASE_URL}
       IMAGE_RETRY_COUNT: ${IMAGE_RETRY_COUNT:-3}
+      # Points to the n8n container by service name — works inside Docker network
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://n8n:5678/webhook/generate-content}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 15s
+    depends_on:
+      n8n:
+        condition: service_started
 
   # ── Next.js frontend ─────────────────────────────────────────────────────────
   frontend:
@@ -38,3 +43,30 @@ services:
     depends_on:
       api:
         condition: service_healthy
+
+  # ── n8n workflow automation ───────────────────────────────────────────────────
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: ai_content_engine_n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # Auth — set to true and add N8N_BASIC_AUTH_USER/PASSWORD to secure in prod
+      N8N_BASIC_AUTH_ACTIVE: "false"
+      # Allow $env.VAR expressions in HTTP Request nodes (used by workflow.json)
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      GENERIC_TIMEZONE: ${TIMEZONE:-UTC}
+      # Disable secure-cookie requirement so the UI works over plain HTTP locally
+      N8N_SECURE_COOKIE: "false"
+      # These are read by the workflow via $env.* and process.env.*
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENROUTER_TEXT_MODEL: ${OPENROUTER_TEXT_MODEL:-anthropic/claude-3-5-haiku}
+      OPENROUTER_IMAGE_MODEL: ${OPENROUTER_IMAGE_MODEL:-google/gemini-2.0-flash-exp:free}
+      # Backend URL reachable inside the Docker network
+      BACKEND_URL: http://api:8000
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:
