@@ -3,14 +3,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_db
-from app.schemas.client import ClientCreate, ClientListResponse, ClientResponse, ClientUpdate
+from app.schemas.client import ClientCreate, ClientEdit, ClientListResponse, ClientResponse, ClientUpdate
 from app.services.client_service import (
     count_posts_this_month,
     create_client,
     delete_client,
     get_client_by_owner,
+    get_stats,
     list_clients,
     set_client_active,
+    update_client,
 )
 
 router = APIRouter(prefix="/clients", tags=["clients"])
@@ -36,6 +38,14 @@ async def get_all_clients(
         clients=[ClientResponse.model_validate(c) for c in clients],
         total=len(clients),
     )
+
+
+@router.get("/stats")
+async def get_client_stats(
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user),
+) -> dict:
+    return await get_stats(db, owner_id=user_id)
 
 
 @router.get("/{client_id}/quota")
@@ -65,6 +75,20 @@ async def get_single_client(
     if not client:
         raise HTTPException(status_code=404, detail=f"Client '{client_id}' not found.")
     return ClientResponse.model_validate(client)
+
+
+@router.put("/{client_id}", response_model=ClientResponse)
+async def edit_client(
+    client_id: str,
+    data: ClientEdit,
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user),
+) -> ClientResponse:
+    client = await get_client_by_owner(db, client_id, user_id)
+    if not client:
+        raise HTTPException(status_code=404, detail=f"Client '{client_id}' not found.")
+    updated = await update_client(db, client_id, data)
+    return ClientResponse.model_validate(updated)
 
 
 @router.patch("/{client_id}", response_model=ClientResponse)

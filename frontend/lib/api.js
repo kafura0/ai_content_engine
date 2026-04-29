@@ -77,6 +77,38 @@ export async function getPosts(clientId) {
   return res.json()
 }
 
+export async function getStats() {
+  const res = await authFetch('/clients/stats', { cache: 'no-store' })
+  if (!res.ok) throw new Error('Failed to fetch stats')
+  return res.json()
+}
+
+export async function editClient(clientId, data) {
+  const res = await authFetch(`/clients/${clientId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Failed to update client')
+  }
+  return res.json()
+}
+
+export async function editPost(postId, data) {
+  const res = await authFetch(`/posts/${postId}/edit`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Failed to update post')
+  }
+  return res.json()
+}
+
 export async function getClientQuota(clientId) {
   const res = await authFetch(`/clients/${clientId}/quota`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to fetch quota')

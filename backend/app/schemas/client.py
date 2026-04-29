@@ -96,6 +96,44 @@ class ClientUpdate(BaseModel):
     is_active: bool
 
 
+class ClientEdit(BaseModel):
+    """Full profile edit — all fields optional so callers send only what changed."""
+    name: str | None = Field(None, min_length=1)
+    industry: str | None = None
+    tone_of_voice: str | None = None
+    brand_colors: list[str] | None = None
+    logo_url: str | None = None
+    image_style: str | None = None
+    target_audience: str | None = None
+    services: list[str] | None = None
+    location: str | None = None
+    posting_goals: list[str] | None = None
+    audience_pain_points: list[str] | None = None
+    unique_selling_points: list[str] | None = None
+    past_wins: list[str] | None = None
+    platforms: list[str] | None = None
+    price_positioning: str | None = None
+    brand_tagline: str | None = None
+    words_to_avoid: list[str] | None = None
+    founding_story: str | None = None
+    cta_destination: str | None = None
+    monthly_post_quota: int | None = Field(None, ge=1)
+    notes: str | None = None
+    timezone: str | None = None
+    facebook_page_id: str | None = None
+    instagram_account_id: str | None = None
+    tiktok_account_id: str | None = None
+    meta_access_token: str | None = None
+    is_active: bool | None = None
+
+    @field_validator("brand_colors")
+    @classmethod
+    def max_ten_colors(cls, v: list[str] | None) -> list[str] | None:
+        if v is not None and len(v) > 10:
+            raise ValueError("brand_colors may contain at most 10 values")
+        return v
+
+
 class ClientResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

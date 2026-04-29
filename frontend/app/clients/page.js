@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import ClientCard from '@/components/ClientCard'
-import { getClients, createClient } from '@/lib/api'
+import { getClients, createClient, getStats } from '@/lib/api'
 
 const TONES     = ['professional', 'casual', 'premium', 'playful', 'bold', 'inspirational']
 const STYLES    = ['cinematic', 'realistic', 'minimal', 'bold', 'editorial', 'lifestyle']
@@ -57,14 +57,16 @@ export default function ClientsPage() {
   const [form,       setForm]       = useState(blank)
   const [submitting, setSubmitting] = useState(false)
   const [formError,  setFormError]  = useState(null)
+  const [stats,      setStats]      = useState(null)
 
   useEffect(() => { load() }, [])
 
   async function load() {
     try {
       setLoading(true)
-      const data = await getClients()
+      const [data, statsData] = await Promise.all([getClients(), getStats().catch(() => null)])
       setClients(data.clients || [])
+      setStats(statsData)
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
   }
@@ -143,6 +145,23 @@ export default function ClientsPage() {
           {showForm ? 'Cancel' : '+ Add Client'}
         </button>
       </div>
+
+      {/* Stats bar */}
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+          {[
+            { label: 'Total Clients',     value: stats.total_clients },
+            { label: 'Active',            value: stats.active_clients },
+            { label: 'Posts This Month',  value: stats.posts_this_month },
+            { label: 'All-Time Posts',    value: stats.total_posts },
+          ].map(s => (
+            <div key={s.label} className="bg-white rounded-xl border border-slate-100 px-4 py-3 shadow-sm">
+              <p className="text-2xl font-bold text-slate-900">{s.value}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {showForm && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-7 mb-8">

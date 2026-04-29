@@ -26,3 +26,10 @@ class ContentResponse(BaseModel):
     client_id: str
     client_name: str
     posts: list[PostOut]
+
+
+class PostEdit(BaseModel):
+    hook: str | None = None
+    caption: str | None = None
+    call_to_action: str | None = None
+    hashtags: list[str] | None = None
