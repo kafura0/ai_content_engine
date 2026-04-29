@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     # n8n orchestration
     n8n_webhook_url: str = ""
 
+    # Comma-separated extra origins to allow in CORS (e.g. Vercel preview URLs)
+    # Defaults always include localhost:3000 and the joat.studio production domain
+    extra_allowed_origins: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 

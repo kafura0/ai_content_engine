@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.config import settings
 from app.database import create_tables
 from app.routes.clients import router as clients_router
 from app.routes.content import router as content_router
@@ -27,16 +28,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_default_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://joat.studio",
+    "https://www.joat.studio",
+]
+_extra = [o.strip() for o in settings.extra_allowed_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        # Local development
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        # Production
-        "https://joat.studio",
-        "https://www.joat.studio",
-    ],
+    allow_origins=_default_origins + _extra,
     allow_methods=["*"],
     allow_headers=["*"],
 )
