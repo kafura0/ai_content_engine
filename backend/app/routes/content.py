@@ -2,10 +2,11 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import get_current_user
 from app.config import settings
 from app.database import get_db
 from app.schemas.content import ContentResponse, PostOut
-from app.services.client_service import get_client
+from app.services.client_service import count_posts_this_month, get_client_by_owner
 from app.services.content_generator import generate_content_for_client
 
 router = APIRouter(tags=["content"])
@@ -16,13 +17,27 @@ async def generate_content(
     client_id: str,
     count: int = Query(default=5, ge=1, le=10),
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user),
 ) -> ContentResponse:
-    """Generate content directly via OpenRouter (no n8n)."""
-    client = await get_client(db, client_id)
+    client = await get_client_by_owner(db, client_id, user_id)
     if not client:
         raise HTTPException(status_code=404, detail=f"Client '{client_id}' not found.")
     if not client.is_active:
-        raise HTTPException(status_code=403, detail=f"Client '{client.name}' is inactive. Activate the client to generate content.")
+        raise HTTPException(
+            status_code=403,
+            detail=f"Client '{client.name}' is inactive. Activate the client to generate content.",
+        )
+
+    used = await count_posts_this_month(db, client_id)
+    if used + count > client.monthly_post_quota:
+        remaining = max(0, client.monthly_post_quota - used)
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Quota exceeded: {used}/{client.monthly_post_quota} posts used this month. "
+                f"{remaining} remaining."
+            ),
+        )
 
     posts = await generate_content_for_client(db, client, count)
 
@@ -37,9 +52,9 @@ async def generate_content(
 async def trigger_generation(
     client_id: str,
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user),
 ) -> dict:
-    """Trigger n8n workflow to generate content (async)."""
-    client = await get_client(db, client_id)
+    client = await get_client_by_owner(db, client_id, user_id)
     if not client:
         raise HTTPException(status_code=404, detail=f"Client '{client_id}' not found.")
 

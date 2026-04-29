@@ -91,7 +91,13 @@ function PostsPage() {
       {/* Posts grid */}
       {!loading && posts.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {posts.map(p => <PostCard key={p.id} post={p} />)}
+          {posts.map(p => (
+            <PostCard
+              key={p.id}
+              post={p}
+              showPublish={!!(selected?.facebook_page_id || selected?.instagram_account_id)}
+            />
+          ))}
         </div>
       )}
 

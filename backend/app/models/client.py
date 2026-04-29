@@ -46,6 +46,10 @@ class Client(Base):
     instagram_account_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     tiktok_account_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Auth: UUID of the Supabase user who owns this client (nullable for legacy rows)
+    owner_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    # Publishing: Meta (Facebook/Instagram) Page Access Token
+    meta_access_token: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     posts: Mapped[list["Post"]] = relationship(

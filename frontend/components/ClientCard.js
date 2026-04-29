@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
-import { deleteClient, setClientActive } from '@/lib/api'
+import { useState, useEffect } from 'react'
+import { deleteClient, getClientQuota, setClientActive } from '@/lib/api'
 
 export default function ClientCard({ client, onDeleted, onUpdated }) {
   const colors   = Array.isArray(client.brand_colors) ? client.brand_colors : []
@@ -12,8 +12,15 @@ export default function ClientCard({ client, onDeleted, onUpdated }) {
   const [confirming, setConfirming] = useState(false)
   const [deleting,   setDeleting]   = useState(false)
   const [toggling,   setToggling]   = useState(false)
+  const [quota,      setQuota]      = useState(null)
 
-  const isActive = client.is_active !== false  // default true for old records
+  const isActive = client.is_active !== false
+
+  useEffect(() => {
+    getClientQuota(client.id)
+      .then(setQuota)
+      .catch(() => {})
+  }, [client.id])
 
   async function handleToggleActive() {
     setToggling(true)
@@ -36,6 +43,12 @@ export default function ClientCard({ client, onDeleted, onUpdated }) {
     }
   }
 
+  const quotaPct   = quota ? Math.min(100, Math.round((quota.used / quota.limit) * 100)) : 0
+  const quotaColor = !quota ? 'bg-slate-200'
+    : quotaPct >= 100 ? 'bg-red-500'
+    : quotaPct >= 80  ? 'bg-amber-400'
+    : 'bg-emerald-400'
+
   return (
     <div className={`bg-white rounded-2xl shadow-sm border p-6 transition-all duration-200 flex flex-col ${
       isActive ? 'border-slate-100 hover:shadow-md' : 'border-slate-200 opacity-60'
@@ -50,7 +63,6 @@ export default function ClientCard({ client, onDeleted, onUpdated }) {
           {client.name.charAt(0).toUpperCase()}
         </div>
         <div className="flex items-center gap-1.5 flex-wrap justify-end max-w-[65%]">
-          {/* Active / Inactive badge */}
           <button
             onClick={handleToggleActive}
             disabled={toggling}
@@ -96,6 +108,22 @@ export default function ClientCard({ client, onDeleted, onUpdated }) {
           )}
         </div>
       )}
+
+      {/* Quota bar */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-slate-400">Monthly quota</span>
+          <span className="text-xs text-slate-500 font-medium">
+            {quota ? `${quota.used} / ${quota.limit}` : '—'}
+          </span>
+        </div>
+        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${quotaColor}`}
+            style={{ width: `${quotaPct}%` }}
+          />
+        </div>
+      </div>
 
       {/* Actions */}
       <div className="flex gap-2 mt-auto pt-4 border-t border-slate-50">

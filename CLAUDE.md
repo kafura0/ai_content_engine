@@ -283,4 +283,16 @@ ALTER TABLE clients
   ADD COLUMN IF NOT EXISTS facebook_page_id      VARCHAR(100),
   ADD COLUMN IF NOT EXISTS instagram_account_id  VARCHAR(100),
   ADD COLUMN IF NOT EXISTS tiktok_account_id     VARCHAR(100);
+
+-- clients: auth ownership + Meta publishing token
+ALTER TABLE clients
+  ADD COLUMN IF NOT EXISTS owner_id          UUID,
+  ADD COLUMN IF NOT EXISTS meta_access_token VARCHAR(500);
+
+CREATE INDEX IF NOT EXISTS idx_clients_owner_id ON clients(owner_id);
+
+-- posts: publish tracking
+ALTER TABLE posts
+  ADD COLUMN IF NOT EXISTS published_at TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS published_to JSONB;
 ```

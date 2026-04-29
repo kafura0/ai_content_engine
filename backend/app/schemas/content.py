@@ -17,6 +17,8 @@ class PostOut(BaseModel):
     image_url: str | None
     content_type: str | None
     status: str
+    published_at: datetime | None
+    published_to: list | None
     created_at: datetime
 
 

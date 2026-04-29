@@ -79,6 +79,10 @@ class ClientCreate(BaseModel):
     facebook_page_id: str | None = None
     instagram_account_id: str | None = None
     tiktok_account_id: str | None = None
+    meta_access_token: str | None = Field(
+        None,
+        description="Meta (Facebook/Instagram) Page Access Token for publishing",
+    )
 
     @field_validator("brand_colors")
     @classmethod
@@ -121,7 +125,9 @@ class ClientResponse(BaseModel):
     facebook_page_id: str | None
     instagram_account_id: str | None
     tiktok_account_id: str | None
+    meta_access_token: str | None
     is_active: bool
+    owner_id: str | None
     created_at: datetime
 
 

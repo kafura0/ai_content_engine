@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import PostCard from '@/components/PostCard'
-import { getClients, generateContent } from '@/lib/api'
+import { getClients, generateContent, getClientQuota } from '@/lib/api'
 
 function Spinner({ size = 5 }) {
   return (
@@ -24,12 +24,18 @@ function GeneratePage() {
   const [posts,    setPosts]    = useState([])
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState(null)
+  const [quota,    setQuota]    = useState(null)
 
   useEffect(() => {
     getClients()
       .then(d => setClients(d.clients || []))
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!clientId) { setQuota(null); return }
+    getClientQuota(clientId).then(setQuota).catch(() => setQuota(null))
+  }, [clientId])
 
   function handleClientChange(e) {
     setClientId(e.target.value)
@@ -86,6 +92,19 @@ function GeneratePage() {
             {loading ? <><Spinner size={4} /> Generating...</> : '✦ Generate'}
           </button>
         </div>
+
+        {/* Quota indicator */}
+        {quota && (
+          <div className={`mt-4 pt-4 border-t border-slate-50 text-xs font-medium px-3 py-2 rounded-lg ${
+            quota.remaining === 0 ? 'bg-red-50 text-red-600'
+            : quota.remaining <= 3 ? 'bg-amber-50 text-amber-700'
+            : 'bg-slate-50 text-slate-500'
+          }`}>
+            {quota.remaining === 0
+              ? `Quota reached: ${quota.used}/${quota.limit} posts used this month`
+              : `${quota.used}/${quota.limit} posts used this month · ${quota.remaining} remaining`}
+          </div>
+        )}
 
         {/* Selected client meta */}
         {selected && (

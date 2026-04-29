@@ -46,6 +46,7 @@ const blank = {
   monthly_post_quota: 20, notes: '',
   // Publishing
   timezone: 'UTC', facebook_page_id: '', instagram_account_id: '', tiktok_account_id: '',
+  meta_access_token: '',
 }
 
 export default function ClientsPage() {
@@ -119,6 +120,7 @@ export default function ClientsPage() {
         facebook_page_id:      form.facebook_page_id || null,
         instagram_account_id:  form.instagram_account_id || null,
         tiktok_account_id:     form.tiktok_account_id || null,
+        meta_access_token:     form.meta_access_token || null,
       })
       setForm(blank)
       setShowForm(false)
@@ -325,8 +327,8 @@ export default function ClientsPage() {
             </Section>
 
             {/* ── Section 4: Publishing ── */}
-            <Section title="Social Publishing" subtitle="Required when auto-publishing via n8n is enabled.">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <Section title="Social Publishing" subtitle="Required to publish posts directly to Facebook or Instagram.">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <Field label="Facebook Page ID">
                   <input name="facebook_page_id" value={form.facebook_page_id} onChange={set}
                     placeholder="123456789012345" className={inp} />
@@ -339,6 +341,13 @@ export default function ClientsPage() {
                   <input name="tiktok_account_id" value={form.tiktok_account_id} onChange={set}
                     placeholder="xxxxxxxxxxxxxxxx" className={inp} />
                 </Field>
+                <div className="md:col-span-2">
+                  <Field label="Meta (Facebook/Instagram) Page Access Token">
+                    <input name="meta_access_token" value={form.meta_access_token} onChange={set}
+                      placeholder="EAABsbCS..." className={`${inp} font-mono text-xs`} />
+                    <Hint>Long-lived Page Access Token from Meta for Developers. Required to publish posts.</Hint>
+                  </Field>
+                </div>
               </div>
             </Section>
 

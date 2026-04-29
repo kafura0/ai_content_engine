@@ -10,6 +10,7 @@ from app.routes.clients import router as clients_router
 from app.routes.content import router as content_router
 from app.routes.n8n import router as n8n_router
 from app.routes.posts import router as posts_router
+from app.routes.publish import router as publish_router
 
 
 @asynccontextmanager
@@ -47,6 +48,7 @@ app.include_router(clients_router)
 app.include_router(content_router)
 app.include_router(posts_router)
 app.include_router(n8n_router)
+app.include_router(publish_router)
 
 
 @app.exception_handler(Exception)

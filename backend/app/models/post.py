@@ -29,6 +29,8 @@ class Post(Base):
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     content_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    published_to: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     client: Mapped["Client"] = relationship("Client", back_populates="posts")
