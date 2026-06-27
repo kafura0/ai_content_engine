@@ -1,0 +1,29 @@
+# Fly.io deployment config for the FastAPI backend
+# Docs: https://fly.io/docs/reference/configuration/
+
+app = "ai-content-engine-api"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # Default model — override via `fly secrets set` if needed
+  OPENROUTER_TEXT_MODEL = "anthropic/claude-3.5-haiku"
+  OPENROUTER_IMAGE_MODEL = "google/gemini-2.5-flash-image"
+  IMAGE_RETRY_COUNT = "3"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.health_check]
+    path = "/health"
+    method = "GET"
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

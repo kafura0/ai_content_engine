@@ -29,17 +29,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-_default_origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://joat.studio",
-    "https://www.joat.studio",
-]
-_extra = [o.strip() for o in settings.extra_allowed_origins.split(",") if o.strip()]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_default_origins + _extra,
+    allow_origins=[
+        origin.strip()
+        for origin in settings.allowed_origins.split(",")
+        if origin.strip()
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )

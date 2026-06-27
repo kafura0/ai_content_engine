@@ -16,9 +16,8 @@ class Settings(BaseSettings):
     # Supabase JWT secret (Settings → API → JWT Secret in Supabase dashboard)
     supabase_jwt_secret: str = ""
 
-    # Comma-separated extra origins to allow in CORS (e.g. Vercel preview URLs)
-    # Defaults always include localhost:3000 and the joat.studio production domain
-    extra_allowed_origins: str = ""
+    # CORS — comma-separated list of allowed origins (frontend URLs)
+    allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
