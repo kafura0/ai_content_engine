@@ -34,11 +34,11 @@ Inline editing mode on a PostCard — hook, caption, CTA, and hashtags can be tw
 
 ---
 
-### Content Engine Architecture
+### n8n Workflow Nodes
 
-![Content Engine Viz](demo/content_engine_viz.png)
+![Content Engine Viz](demo/content_engine_n8n_nodes.png)
 
-System architecture diagram showing the flow: Frontend → FastAPI Backend → OpenRouter (Gemini) → Supabase Database, and the optional n8n automation path.
+The n8n workflow node graph — Webhook → Fetch Client → Build Prompt → Generate Text → Parse Posts → Generate Images → Save Posts → Respond. Each node corresponds to a step in the `n8n/workflow.json` import.
 
 ---
 
