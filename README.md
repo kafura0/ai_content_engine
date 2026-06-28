@@ -1,6 +1,8 @@
 # AI Content Engine
 
-A production-ready multi-client social media content engine powered by **Claude** (text) and **Google Gemini 2.5 Flash** (images) via OpenRouter.
+[![Live](https://img.shields.io/badge/demo-DEMO.md-blue)](DEMO.md)
+
+A production-ready multi-client social media content engine powered by **Gemini** (text + images) via OpenRouter.
 
 Create a client profile once. Generate viral, brand-consistent social media posts with AI images instantly — via API, dashboard, or automated n8n workflow.
 
@@ -9,7 +11,7 @@ Create a client profile once. Generate viral, brand-consistent social media post
 ## Features
 
 - **Multi-tenant** — unlimited client profiles, fully isolated content per client
-- **Viral content** — Claude generates hooks, captions, CTAs, and hashtags tuned to each brand's tone and audience
+- **Viral content** — Gemini generates hooks, captions, CTAs, and hashtags tuned to each brand's tone and audience
 - **AI images** — Gemini 2.5 Flash generates a branded image per post via OpenRouter
 - **Content rotation** — automatically cycles through 5 content types: educational, authority, social proof, problem-solution, behind-the-scenes
 - **Persistent storage** — all clients and generated posts saved to database
@@ -24,8 +26,8 @@ Create a client profile once. Generate viral, brand-consistent social media post
 | Layer | Technology |
 |---|---|
 | API | FastAPI + Uvicorn |
-| LLM (text) | Claude 3.5 Haiku via OpenRouter |
-| LLM (images) | Google Gemini 2.5 Flash Image via OpenRouter |
+| LLM (text) | Gemini 2.5 Flash Lite via OpenRouter |
+| LLM (images) | Gemini 2.5 Flash Image via OpenRouter |
 | Database | SQLite (dev) / PostgreSQL (prod) |
 | ORM | SQLAlchemy 2.0 async |
 | Validation | Pydantic v2 |
@@ -69,7 +71,7 @@ ai_content_engine/          # Python backend
         ├── posts.py        # GET /posts/{client_id}
         └── n8n.py          # POST /n8n/save-posts (receives posts from n8n)
 
-content_dashboard/          # Next.js 14 frontend
+frontend/                   # Next.js 14 frontend
 ├── app/
 │   ├── clients/page.js     # Client management (create, view, browse)
 │   ├── generate/page.js    # Generate content per client
@@ -77,7 +79,9 @@ content_dashboard/          # Next.js 14 frontend
 ├── components/
 │   ├── ClientCard.js       # Client card with brand colors + actions
 │   └── PostCard.js         # Post card with image, hook, caption, hashtags
-├── lib/api.js              # API wrapper for all backend calls
+├── lib/
+│   ├── api.js              # API wrapper for all backend calls
+│   └── supabase.js         # Auth helpers (DEV_MODE / production)
 └── jsconfig.json           # Enables @/ path alias
 ```
 
@@ -103,7 +107,7 @@ Edit `.env`:
 
 ```env
 OPENROUTER_API_KEY=sk-or-v1-your-key-here
-OPENROUTER_TEXT_MODEL=anthropic/claude-3.5-haiku
+OPENROUTER_TEXT_MODEL=google/gemini-2.5-flash-lite
 OPENROUTER_IMAGE_MODEL=google/gemini-2.5-flash-image
 DATABASE_URL=sqlite+aiosqlite:///./content_engine.db
 IMAGE_RETRY_COUNT=3
@@ -123,7 +127,7 @@ Interactive docs at `http://127.0.0.1:8000/docs`
 ### Frontend (Next.js Dashboard)
 
 ```bash
-cd content_dashboard
+cd frontend
 npm install
 npm run dev
 ```
@@ -143,7 +147,7 @@ Create a new client profile.
   "name": "Apex Electrical",
   "industry": "electrical contracting",
   "tone_of_voice": "professional",
-  "brand_colors": { "primary": "#FFD700", "secondary": "#1A1A1A" },
+  "brand_colors": ["#FFD700", "#1A1A1A"],
   "image_style": "cinematic",
   "target_audience": "homeowners and construction firms in Nairobi",
   "services": ["wiring", "solar installation", "CCTV"],
@@ -245,28 +249,42 @@ Server health check.
 
 Import `n8n/workflow.json` into your n8n instance to run automated content generation.
 
+```mermaid
+flowchart LR
+    W["1. Webhook<br/>POST /generate-content"] --> FC["2. Fetch Client<br/>GET /clients/{id}"]
+    FC --> BP["3. Build Prompt<br/>Code: construct prompts"]
+    BP --> GT["4. Generate Text<br/>POST → OpenRouter"]
+    GT --> PP["5. Parse Posts<br/>Code: extract JSON"]
+    PP --> GI["6. Generate Images<br/>Code: image per post"]
+    GI --> SP["7. Save Posts<br/>POST → /n8n/save-posts"]
+    SP --> RW["8. Respond to Webhook<br/>{success, total, posts}"]
+```
+
 ### What it does
 
-1. Webhook trigger receives a `client_id`
-2. Fetches the client profile from FastAPI
-3. Builds a viral prompt and sends to Claude via OpenRouter
-4. Parses Claude's JSON response into individual posts
-5. Loops through posts — generates an image for each via Gemini
-6. Saves all completed posts to FastAPI (`POST /n8n/save-posts`)
-7. Returns the saved posts as the webhook response
+1. **Webhook** — receives `{ client_id }` via POST
+2. **Fetch Client** — gets the full client profile from the backend
+3. **Build Prompt** — assembles system + user prompts from client fields (name, industry, tone, services, audience, etc.)
+4. **Generate Text** — calls OpenRouter with `google/gemini-2.5-flash-lite`, JSON mode
+5. **Parse Posts** — strips markdown fences, `JSON.parse`s the response, extracts `posts[]`
+6. **Generate Images** — iterates posts, calls OpenRouter Gemini image model for each `image_prompt`, falls back to placeholder on failure
+7. **Save Posts** — POSTs completed posts to the backend (`/n8n/save-posts`)
+8. **Respond to Webhook** — returns `{ success, client_id, total, posts }`
 
 ### Setup
 
-Set these environment variables in n8n (Settings → Variables):
+Set these environment variables in n8n (Settings → Environment Variables):
 
-```
-OPENROUTER_API_KEY   your OpenRouter API key
-FASTAPI_BASE_URL     http://127.0.0.1:8000  (or your deployed URL)
-```
+| Variable | Value |
+|---|---|
+| `OPENROUTER_API_KEY` | your OpenRouter API key |
+| `OPENROUTER_TEXT_MODEL` | `google/gemini-2.5-flash-lite` |
+| `OPENROUTER_IMAGE_MODEL` | `google/gemini-2.5-flash-image` |
+| `BACKEND_URL` | `http://localhost:8000` (local) or `https://ai-content-engine-api.fly.dev` (prod) |
 
 ### Trigger
 
-Send a POST request to the webhook URL with:
+Send a POST request to the webhook URL:
 ```json
 { "client_id": "your-client-uuid" }
 ```
@@ -287,6 +305,6 @@ No code changes required. Tables are auto-created on startup.
 
 ## Image Generation Notes
 
-Images are generated via **Google Gemini 2.5 Flash Image** through OpenRouter's chat completions endpoint (`/api/v1/chat/completions`). The model returns images as base64 data URIs (`data:image/png;base64,...`), which browsers render natively in `<img src>` tags.
+Images are generated via **Gemini 2.5 Flash Image** through OpenRouter's chat completions endpoint (`/api/v1/chat/completions`). The model returns images as base64 data URIs (`data:image/png;base64,...`), which browsers render natively in `<img src>` tags.
 
 Image generation uses a retry wrapper with exponential backoff (1s → 2s → 4s, max 3 attempts). If all attempts fail, `image_url` is saved as `null` — the post is still saved with all text content intact.

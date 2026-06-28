@@ -1,6 +1,11 @@
 # Deployment Guide
 
-Free-tier deployment: **Supabase** (DB) + **Fly.io** (backend + n8n) + **Vercel** (frontend).
+Free-tier deployment: **Supabase** (DB) + **Fly.io** (backend) + **Vercel** (frontend) + **Docker** (n8n local).
+
+**Live URLs:**
+- Backend: `https://ai-content-engine-api.fly.dev`
+- Frontend: `https://frontend-theta-steel-79.vercel.app`
+- n8n: `http://localhost:5678` (local Docker only — Fly.io trial org blocks n8n deploy)
 
 ---
 
@@ -53,56 +58,48 @@ fly deploy
 
 ---
 
-## 3. n8n — Fly.io
+## 3. n8n — Local Docker (Fly.io deploy blocked)
 
-### Deploy
+> **Note:** n8n deploy to Fly.io is blocked on trial orgs — "This functionality is disabled for trial organizations. Please add a credit card". Run n8n locally via Docker instead.
+
+### Local Docker setup
 
 ```bash
-cd n8n
+# Start n8n
+docker compose up -d n8n
 
-# Launch the app (first time only)
-fly launch --name ai-content-engine-n8n --region lhr --no-deploy
-
-# Create a volume for persistent n8n data
-fly volumes create n8n_data --region lhr --size 1
-
-# Set secrets
-fly secrets set \
-  N8N_ENCRYPTION_KEY="$(openssl rand -hex 32)" \
-  N8N_USER_MANAGEMENT_JWT_SECRET="$(openssl rand -hex 32)" \
-  N8N_BASIC_AUTH_ACTIVE="false"
-
-# Deploy
-fly deploy
-
-# Check logs
-fly logs
+# Open in browser
+start http://localhost:5678
 ```
+
+First-time setup: create an admin account at `http://localhost:5678`, then import `n8n/workflow.json` and configure the nodes.
 
 ### Configure n8n
 
-1. Open `https://ai-content-engine-n8n.fly.dev` in a browser
+1. Open `http://localhost:5678` in a browser
 2. Set up your admin account
 3. Go to **Workflows → Import from File** and import `n8n/workflow.json`
 4. In the imported workflow, update these fields:
 
    | Node | Field | Replace with |
    |------|-------|-------------|
-   | **Fetch Client** | URL | `https://YOUR_BACKEND.fly.dev/clients/` → your actual backend URL |
+   | **Fetch Client** | URL | `https://ai-content-engine-api.fly.dev/clients/` |
    | **Generate Text** | `Authorization` header | Your OpenRouter API key |
-   | **Generate Text** | `HTTP-Referer` header | Your frontend URL |
+   | **Generate Text** | `HTTP-Referer` header | `https://frontend-theta-steel-79.vercel.app` |
    | **Generate Images** | `apiKey` variable | Your OpenRouter API key |
-   | **Generate Images** | `HTTP-Referer` header | Your frontend URL |
-   | **Save Posts** | URL | `https://YOUR_BACKEND.fly.dev/n8n/save-posts` → your actual backend URL |
+   | **Generate Images** | `HTTP-Referer` header | `https://frontend-theta-steel-79.vercel.app` |
+   | **Save Posts** | URL | `https://ai-content-engine-api.fly.dev/n8n/save-posts` |
 
 5. **Activate** the workflow (toggle at the top)
 
 ### Get the webhook URL
 
-After activating, copy the **Webhook URL** from the Webhook node. It will look like:
+After activating, the **Webhook URL** is:
 ```
-https://ai-content-engine-n8n.fly.dev/webhook/generate-content
+http://localhost:5678/webhook/generate-content
 ```
+
+The backend's direct `/generate-content` path does not require n8n — it calls OpenRouter directly.
 
 ---
 
@@ -142,23 +139,25 @@ Then redeploy: `vercel --prod`
 
 ## 5. Connect Everything
 
-### Backend ↔ n8n
+### Backend → n8n (optional — only needed for async path)
 
 Set the n8n webhook URL as a secret on the backend:
 
 ```bash
 fly secrets set \
-  N8N_WEBHOOK_URL="https://ai-content-engine-n8n.fly.dev/webhook/generate-content" \
-  ALLOWED_ORIGINS="https://your-frontend.vercel.app,http://localhost:3000"
+  N8N_WEBHOOK_URL="http://localhost:5678/webhook/generate-content" \
+  ALLOWED_ORIGINS="https://frontend-theta-steel-79.vercel.app,http://localhost:3000"
 ```
+
+The Fly.io backend cannot reach `localhost:5678` — n8n async path only works when both run locally.
 
 ### Frontend → Backend
 
-The `NEXT_PUBLIC_API_URL` env var on Vercel points to `https://YOUR_BACKEND.fly.dev`.
+The `NEXT_PUBLIC_API_URL` env var on Vercel is set to `https://ai-content-engine-api.fly.dev`.
 
 ### Verify
 
-1. Visit your frontend URL
+1. Visit `https://frontend-theta-steel-79.vercel.app`
 2. Create a test client
 3. Trigger content generation (direct path uses `/generate-content`, no n8n needed)
 4. Check that posts appear
@@ -172,7 +171,7 @@ The `NEXT_PUBLIC_API_URL` env var on Vercel points to `https://YOUR_BACKEND.fly.
 | Supabase Free | $0 | 500 MB DB, 2 GB bandwidth |
 | Fly.io | $0 | 3 shared VMs (256 MB each), 3 GB persistent volume |
 | Vercel | $0 | 100 GB bandwidth, 6000 build mins |
-| OpenRouter | ~$0.20/100 posts | Pay per token — ~$0.002 per post with Claude Haiku |
+| OpenRouter | ~$0.01/100 posts | gemini-2.5-flash-lite is very cheap — $0.15/M tokens input, $0.60/M output |
 | **Total** | **~$0/mo** | For light usage (~100 posts/mo) |
 
 ---
@@ -183,8 +182,8 @@ The `NEXT_PUBLIC_API_URL` env var on Vercel points to `https://YOUR_BACKEND.fly.
 # Backend
 cd backend && fly deploy
 
-# n8n
-cd n8n && fly deploy
+# n8n (local Docker)
+docker compose restart n8n
 
 # Frontend (Vercel CLI)
 cd frontend && vercel --prod
@@ -205,15 +204,14 @@ fly ssh console
 
 **n8n data lost:**
 ```bash
-# Check volume is attached
-fly volumes list
-# Re-attach if missing: fly volumes create n8n_data --region lhr --size 1
+# Restart local Docker container
+docker compose restart n8n
 ```
 
 **CORS errors in browser:**
 ```bash
 # Update allowed origins
-fly secrets set ALLOWED_ORIGINS="https://your-frontend.vercel.app,http://localhost:3000"
+fly secrets set ALLOWED_ORIGINS="https://frontend-theta-steel-79.vercel.app,http://localhost:3000"
 # Redeploy
 fly deploy
 ```

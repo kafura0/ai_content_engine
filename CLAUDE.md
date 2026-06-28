@@ -2,7 +2,9 @@
 
 ## What this project is
 
-A multi-tenant SaaS platform for AI-generated social media content. Agency operators add clients, each with a rich brand profile, and the system generates platform-specific posts (hook, caption, hashtags, image prompt) via Claude on OpenRouter. Content is stored in Supabase and displayed in a Next.js dashboard.
+A multi-tenant SaaS platform for AI-generated social media content. Agency operators add clients, each with a rich brand profile, and the system generates platform-specific posts (hook, caption, hashtags, image prompt) via Gemini on OpenRouter. Content is stored in Supabase and displayed in a Next.js dashboard.
+
+**Live URLs:** Backend → `https://ai-content-engine-api.fly.dev` · Frontend → `https://frontend-theta-steel-79.vercel.app`
 
 ---
 
@@ -25,31 +27,31 @@ ai_content_engine/
 |---|---|
 | Backend | FastAPI, SQLAlchemy 2.0 async, asyncpg, Pydantic v2 |
 | Database | Supabase PostgreSQL (prod) / SQLite + aiosqlite (local dev) |
-| AI text | Claude via OpenRouter (`/v1/chat/completions`, JSON mode) |
-| AI images | Gemini via OpenRouter |
+| AI text | Gemini via OpenRouter (`google/gemini-2.5-flash-lite`, JSON mode, `max_tokens=2048`) |
+| AI images | Gemini via OpenRouter (`google/gemini-2.5-flash-image`) |
 | Frontend | Next.js 14 (App Router), React 18, Tailwind CSS 3 |
-| Infra | Docker, Dokploy (PaaS), Traefik reverse proxy |
+| Infra | Fly.io (backend), Vercel (frontend), Docker (n8n local) |
 | Automation | n8n v2 self-hosted (async content generation path) |
 
 ---
 
 ## Environment variables
 
-Defined in `.env` (local) and set as build-time / runtime vars in Dokploy.
+Defined in `.env` (local) and set as runtime secrets (Fly.io) / build-time env vars (Vercel).
 
 ```
-# Backend (runtime)
+# Backend (runtime — set via `fly secrets set`)
 OPENROUTER_API_KEY=
-OPENROUTER_TEXT_MODEL=anthropic/claude-sonnet-4-6
-OPENROUTER_IMAGE_MODEL=google/gemini-2.0-flash-exp:free
+OPENROUTER_TEXT_MODEL=google/gemini-2.5-flash-lite
+OPENROUTER_IMAGE_MODEL=google/gemini-2.5-flash-image
 DATABASE_URL=postgresql+asyncpg://...
 N8N_WEBHOOK_URL=          # optional — n8n async path
 
-# Frontend (build-time Docker ARG → NEXT_PUBLIC_*)
-NEXT_PUBLIC_API_URL=https://api.yourdomain.com
+# Frontend (build-time env on Vercel → NEXT_PUBLIC_*)
+NEXT_PUBLIC_API_URL=https://ai-content-engine-api.fly.dev
 ```
 
-`NEXT_PUBLIC_API_URL` is baked into the Next.js bundle at build time. After changing it in Dokploy, do **Clean Cache + redeploy**, not just redeploy.
+`NEXT_PUBLIC_API_URL` is baked into the Next.js bundle at build time. After changing it in Vercel Dashboard → Environment Variables, do **Clean Cache + redeploy**, not just redeploy.
 
 ---
 
@@ -162,7 +164,7 @@ When editing the prompt, keep the output schema (`_POST_SCHEMA`) unchanged — t
 POST /generate-content/{client_id}?count=N
   → check client exists + is_active
   → build_viral_prompt(client, count)
-  → OpenRouter (Claude) → JSON with N posts
+  → OpenRouter (Gemini) → JSON with N posts
   → parse posts
   → generate images concurrently (Gemini, with retry)
   → persist all posts to DB with status="completed"
@@ -214,6 +216,40 @@ After pushing to `main`, Dokploy auto-deploys both services.
 
 ---
 
+## Deployment (Fly.io + Vercel)
+
+Actual current deployment:
+
+- **Backend** → `https://ai-content-engine-api.fly.dev` (Fly.io, port 8000)
+- **Frontend** → `https://frontend-theta-steel-79.vercel.app` (Vercel)
+- **n8n** → `http://localhost:5678` (Docker local — Fly.io trial org blocked from deploying n8n without credit card)
+
+### Backend deploy
+```bash
+cd backend
+fly deploy
+```
+
+### Frontend deploy
+```bash
+cd frontend
+vercel --prod
+```
+
+### Set secrets
+```bash
+fly secrets set \
+  OPENROUTER_API_KEY="sk-or-v1-..." \
+  DATABASE_URL="postgresql+asyncpg://..." \
+  ALLOWED_ORIGINS="https://frontend-theta-steel-79.vercel.app,http://localhost:3000"
+```
+
+**Frontend env change workflow (Vercel):**
+1. Update `NEXT_PUBLIC_API_URL` in Vercel Dashboard → Environment Variables
+2. Click **Clean Cache** then **Redeploy** (plain redeploy reuses the cached build)
+
+---
+
 ## Adding a new feature checklist
 
 **New backend field on Client:**
@@ -241,6 +277,18 @@ After pushing to `main`, Dokploy auto-deploys both services.
 - n8n `$env` access is blocked by default in v2. Variables feature is paid. Use hardcoded values or the HTTP Request node to fetch config.
 - n8n webhook data is at `$json.body.client_id`, not `$json.client_id`.
 - Never use `N8N_BASIC_AUTH_ACTIVE=true` — removed in n8n v2, causes auth conflicts.
+- Timezone bug: `datetime.now(timezone.utc)` returns offset-aware, but `datetime.utcnow()` returns offset-naive. Using both in the same model/service causes `ValueError: can't subtract offset-naive and offset-aware datetimes`. Use `datetime.utcnow()` everywhere.
+- `max_tokens` defaults to unlimited in OpenRouter, which can drain credits fast. Always set `max_tokens=2048` in `text_client.py`.
+
+---
+
+## Install flyctl (Fly.io CLI)
+
+```powershell
+winget install flyctl
+# or
+irm https://fly.io/install.ps1 | iex
+```
 
 ---
 

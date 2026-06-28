@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -65,7 +65,7 @@ async def set_client_active(
 
 
 async def get_stats(db: AsyncSession, owner_id: str) -> dict:
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     clients_result = await db.execute(
@@ -119,7 +119,7 @@ async def get_posts_for_client(db: AsyncSession, client_id: str) -> list[Post]:
 
 
 async def count_posts_this_month(db: AsyncSession, client_id: str) -> int:
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     result = await db.execute(
         select(func.count()).where(

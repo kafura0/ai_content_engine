@@ -23,6 +23,7 @@ async def chat_completion(system_prompt: str, user_prompt: str) -> dict:
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0.85,
+        "max_tokens": 2048,
         "response_format": {"type": "json_object"},
     }
 

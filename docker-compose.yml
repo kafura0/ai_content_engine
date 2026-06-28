@@ -11,7 +11,7 @@ services:
       - "8000:8000"
     environment:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      OPENROUTER_TEXT_MODEL: ${OPENROUTER_TEXT_MODEL:-anthropic/claude-3-5-haiku}
+      OPENROUTER_TEXT_MODEL: ${OPENROUTER_TEXT_MODEL:-google/gemini-2.0-flash-exp:free}
       OPENROUTER_IMAGE_MODEL: ${OPENROUTER_IMAGE_MODEL:-google/gemini-2.0-flash-exp:free}
       DATABASE_URL: ${DATABASE_URL}
       IMAGE_RETRY_COUNT: ${IMAGE_RETRY_COUNT:-3}
@@ -66,7 +66,7 @@ services:
       N8N_SECURE_COOKIE: "false"
       # These are read by the workflow via $env.* and process.env.*
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      OPENROUTER_TEXT_MODEL: ${OPENROUTER_TEXT_MODEL:-anthropic/claude-3-5-haiku}
+      OPENROUTER_TEXT_MODEL: ${OPENROUTER_TEXT_MODEL:-google/gemini-2.0-flash-exp:free}
       OPENROUTER_IMAGE_MODEL: ${OPENROUTER_IMAGE_MODEL:-google/gemini-2.0-flash-exp:free}
       # Backend URL reachable inside the Docker network
       BACKEND_URL: http://api:8000

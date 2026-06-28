@@ -1,46 +1,17 @@
-# Fly.io deployment for self-hosted n8n.
-#
-# One-time setup:
-#   fly auth login
-#   fly apps create your-app-n8n          # pick a unique name, replace below
-#   fly volumes create n8n_data --size 1  # 1 GB persistent volume (free tier)
-#   fly secrets set OPENROUTER_API_KEY=sk-or-...
-#   fly secrets set OPENROUTER_TEXT_MODEL=anthropic/claude-3-5-haiku
-#   fly secrets set OPENROUTER_IMAGE_MODEL=google/gemini-2.0-flash-exp:free
-#   fly secrets set BACKEND_URL=https://ai-content-engine-api.onrender.com
-#   fly deploy
-#
-# After deploy, import the workflow:
-#   open https://your-app-n8n.fly.dev  → Workflows → Import from file → n8n/workflow.json
-
-app = "your-app-n8n"   # <-- change this to your chosen app name
-primary_region = "lax"
+app = "ai-content-engine-n8n"
+primary_region = "lhr"
 
 [build]
   image = "n8nio/n8n:latest"
 
-[env]
-  N8N_BASIC_AUTH_ACTIVE      = "false"
-  N8N_BLOCK_ENV_ACCESS_IN_NODE = "false"
-  N8N_SECURE_COOKIE          = "false"
-  GENERIC_TIMEZONE           = "UTC"
-  N8N_HOST                   = "0.0.0.0"
-  N8N_PORT                   = "5678"
-  N8N_PROTOCOL               = "https"
-  # Set WEBHOOK_URL so n8n generates correct webhook URLs in the UI
-  WEBHOOK_URL                = "https://your-app-n8n.fly.dev"   # <-- match app name above
-
 [http_service]
-  internal_port       = 5678
-  force_https         = true
-  auto_stop_machines  = false   # keep n8n alive so webhooks always work
+  internal_port = 5678
+  force_https = true
+  auto_stop_machines = false
   auto_start_machines = true
   min_machines_running = 1
 
 [[vm]]
-  size   = "shared-cpu-1x"
-  memory = "512mb"   # n8n needs at least 512 MB; still within Fly free allowance
-
-[[mounts]]
-  source      = "n8n_data"
-  destination = "/home/node/.n8n"
+  memory = "1024mb"
+  cpu_kind = "shared"
+  cpus = 1
