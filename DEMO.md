@@ -4,7 +4,7 @@ Live screenshots and walkthrough of the AI Content Engine.
 
 **Live URLs:**
 - **Frontend** — https://frontend-theta-steel-79.vercel.app
-- **Backend API** — https://ai-content-engine-api.fly.dev
+- **Backend API** — https://ai-content-engine-api.fly.dev/health
 
 ---
 
@@ -50,4 +50,4 @@ The n8n workflow node graph — Webhook → Fetch Client → Build Prompt → Ge
 
 Walks through creating a new client profile with brand details, then shows the stats bar updating with AI performance metrics (generated posts, monthly usage, etc.).
 
-> **Note:** GitHub does not render `.mp4` files inline in Markdown. Download the file to view it, or upload to YouTube/Loom and replace the link.
+> **Note:** GitHub does not render `.mp4` files inline in Markdown — the Git LFS icon appears instead. Download the file to view it, or upload to YouTube/Loom and replace the link.

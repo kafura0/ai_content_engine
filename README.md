@@ -6,6 +6,8 @@ A production-ready multi-client social media content engine powered by **Gemini*
 
 Create a client profile once. Generate viral, brand-consistent social media posts with AI images instantly — via API, dashboard, or automated n8n workflow.
 
+**[:camera: View screenshots & demo →](DEMO.md)**
+
 ---
 
 ## Features
