@@ -8,6 +8,8 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.11"
       - key: ALLOWED_ORIGINS
         value: "http://localhost:3000,http://127.0.0.1:3000,https://frontend-theta-steel-79.vercel.app"
       - key: OPENROUTER_API_KEY
