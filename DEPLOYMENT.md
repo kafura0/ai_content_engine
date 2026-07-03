@@ -1,11 +1,11 @@
 # Deployment Guide
 
-Free-tier deployment: **Supabase** (DB) + **Fly.io** (backend) + **Vercel** (frontend) + **Docker** (n8n local).
+Free-tier deployment: **Supabase** (DB) + **Render** (backend) + **Vercel** (frontend) + **Docker** (n8n local).
 
 **Live URLs:**
-- Backend: `https://ai-content-engine-api.fly.dev`
+- Backend: `https://ai-content-engine-api.onrender.com`
 - Frontend: `https://frontend-theta-steel-79.vercel.app`
-- n8n: `http://localhost:5678` (local Docker only — Fly.io trial org blocks n8n deploy)
+- n8n: `http://localhost:5678` (local Docker only)
 
 ---
 
@@ -21,46 +21,52 @@ Free-tier deployment: **Supabase** (DB) + **Fly.io** (backend) + **Vercel** (fro
 
 ---
 
-## 2. Backend — Fly.io
+## 2. Backend — Render
 
 ### Prerequisites
 
-- Install [flyctl](https://fly.io/docs/flyctl/install/)
-- Run `fly auth login`
+- Push the repo to GitHub
+- Create a free account at [render.com](https://render.com)
 
-### Deploy
+### Option A: render.yaml (auto-detected)
 
-```bash
-cd backend
+1. In Render Dashboard → **New + → Web Service**
+2. Connect your GitHub repo
+3. Render auto-detects `render.yaml` — review and **Create Web Service**
+4. Set the following env vars in the dashboard (marked `sync: false` in the yaml):
 
-# Launch the app (first time only)
-fly launch --name ai-content-engine-api --region lhr --no-deploy
+   | Variable | Value |
+   |----------|-------|
+   | `OPENROUTER_API_KEY` | `sk-or-v1-...` |
+   | `DATABASE_URL` | Supabase session pooler URI (from step 1) |
+   | `SUPABASE_JWT_SECRET` | *(leave blank for dev mode)* or paste from Supabase → Settings → API → JWT Secret |
 
-# Set secrets (never bake these into the image)
-fly secrets set \
-  OPENROUTER_API_KEY="sk-or-v1-..." \
-  DATABASE_URL="postgresql+asyncpg://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres" \
-  ALLOWED_ORIGINS="https://your-frontend.vercel.app"
+5. Deploy auto-starts — takes ~2 minutes
+6. Your URL: `https://ai-content-engine-api.onrender.com`
 
-# Deploy
-fly deploy
+### Option B: manual setup
 
-# Check logs
-fly logs
-```
+1. In Render Dashboard → **New + → Web Service**
+2. Connect your GitHub repo
+3. Fill in:
+   - **Name**: `ai-content-engine-api`
+   - **Root Directory**: `backend`
+   - **Runtime**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+   - **Plan**: Free
+4. Add the same env vars as Option A above
+5. **Create Web Service**
 
-### Update after first deploy
+### Important notes
 
-```bash
-cd backend
-fly deploy
-```
+- Free tier **spins down after 15 min idle** — first request after idle takes ~30s
+- To prevent spin-down, set up a [cron-job.org](https://cron-job.org) ping to `/health` every 10 min
+- Use **Manual Deploy → Clear build cache & deploy** to force a clean rebuild
 
 ---
 
-## 3. n8n — Local Docker (Fly.io deploy blocked)
-
-> **Note:** n8n deploy to Fly.io is blocked on trial orgs — "This functionality is disabled for trial organizations. Please add a credit card". Run n8n locally via Docker instead.
+## 3. n8n — Local Docker
 
 ### Local Docker setup
 
@@ -83,12 +89,12 @@ First-time setup: create an admin account at `http://localhost:5678`, then impor
 
    | Node | Field | Replace with |
    |------|-------|-------------|
-   | **Fetch Client** | URL | `https://ai-content-engine-api.fly.dev/clients/` |
+   | **Fetch Client** | URL | `https://ai-content-engine-api.onrender.com/clients/` |
    | **Generate Text** | `Authorization` header | Your OpenRouter API key |
    | **Generate Text** | `HTTP-Referer` header | `https://frontend-theta-steel-79.vercel.app` |
    | **Generate Images** | `apiKey` variable | Your OpenRouter API key |
    | **Generate Images** | `HTTP-Referer` header | `https://frontend-theta-steel-79.vercel.app` |
-   | **Save Posts** | URL | `https://ai-content-engine-api.fly.dev/n8n/save-posts` |
+   | **Save Posts** | URL | `https://ai-content-engine-api.onrender.com/n8n/save-posts` |
 
 5. **Activate** the workflow (toggle at the top)
 
@@ -123,37 +129,27 @@ In Vercel Dashboard → Project → Settings → Environment Variables:
 
 | Name | Value |
 |------|-------|
-| `NEXT_PUBLIC_API_URL` | `https://YOUR_BACKEND.fly.dev` |
+| `NEXT_PUBLIC_API_URL` | `https://ai-content-engine-api.onrender.com` |
 
-Then redeploy: `vercel --prod`
+Then redeploy with **Clean Cache** enabled (plain redeploy reuses the cached build and ignores the new env value).
 
 ### Alternative: connect GitHub repo
 
 1. Push the whole repo to GitHub
 2. In Vercel Dashboard → **Add New Project** → Import your GitHub repo
 3. Framework = **Next.js**, Root Directory = `frontend`
-4. Add env var `NEXT_PUBLIC_API_URL` = `https://YOUR_BACKEND.fly.dev`
+4. Add env var `NEXT_PUBLIC_API_URL` = `https://ai-content-engine-api.onrender.com`
 5. Deploy — Vercel auto-rebuilds on every push
+
+**Important:** `NEXT_PUBLIC_*` vars are baked into the bundle at build time. After changing them, always do **Clean Cache & Redeploy**.
 
 ---
 
 ## 5. Connect Everything
 
-### Backend → n8n (optional — only needed for async path)
-
-Set the n8n webhook URL as a secret on the backend:
-
-```bash
-fly secrets set \
-  N8N_WEBHOOK_URL="http://localhost:5678/webhook/generate-content" \
-  ALLOWED_ORIGINS="https://frontend-theta-steel-79.vercel.app,http://localhost:3000"
-```
-
-The Fly.io backend cannot reach `localhost:5678` — n8n async path only works when both run locally.
-
 ### Frontend → Backend
 
-The `NEXT_PUBLIC_API_URL` env var on Vercel is set to `https://ai-content-engine-api.fly.dev`.
+The `NEXT_PUBLIC_API_URL` env var on Vercel must match the Render service URL.
 
 ### Verify
 
@@ -169,7 +165,7 @@ The `NEXT_PUBLIC_API_URL` env var on Vercel is set to `https://ai-content-engine
 | Service | Cost | Limits |
 |---------|------|--------|
 | Supabase Free | $0 | 500 MB DB, 2 GB bandwidth |
-| Fly.io | $0 | 3 shared VMs (256 MB each), 3 GB persistent volume |
+| Render | $0 | 512 MB RAM, 100 GB bandwidth, spins down after 15 min |
 | Vercel | $0 | 100 GB bandwidth, 6000 build mins |
 | OpenRouter | ~$0.01/100 posts | gemini-2.5-flash-lite is very cheap — $0.15/M tokens input, $0.60/M output |
 | **Total** | **~$0/mo** | For light usage (~100 posts/mo) |
@@ -179,8 +175,8 @@ The `NEXT_PUBLIC_API_URL` env var on Vercel is set to `https://ai-content-engine
 ## Updating Each Service
 
 ```bash
-# Backend
-cd backend && fly deploy
+# Backend — push to GitHub, Render auto-deploys
+git push origin main
 
 # n8n (local Docker)
 docker compose restart n8n
@@ -197,10 +193,7 @@ git push origin main
 ## Troubleshooting
 
 **Backend health check failing:**
-```bash
-fly logs
-fly ssh console
-```
+Check Render Dashboard → your service → **Logs** tab.
 
 **n8n data lost:**
 ```bash
@@ -209,12 +202,10 @@ docker compose restart n8n
 ```
 
 **CORS errors in browser:**
-```bash
-# Update allowed origins
-fly secrets set ALLOWED_ORIGINS="https://frontend-theta-steel-79.vercel.app,http://localhost:3000"
-# Redeploy
-fly deploy
-```
+Update `ALLOWED_ORIGINS` env var in Render Dashboard → Environment → Redeploy.
 
 **n8n webhook returning 404:**
 Make sure the workflow is **activated** (toggle on) in the n8n editor.
+
+**Render slow first request:**
+Free tier spins down after 15 min. Set up a [cron-job.org](https://cron-job.org) ping to `https://ai-content-engine-api.onrender.com/health` every 10 min.
