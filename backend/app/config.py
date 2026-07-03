@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str = ""
 
     # CORS — comma-separated list of allowed origins (frontend URLs)
-    allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000,https://frontend-theta-steel-79.vercel.app"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

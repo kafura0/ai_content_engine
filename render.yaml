@@ -1,35 +1,18 @@
-# Render deployment — covers the FastAPI backend only.
-#
-# Frontend → deploy separately on Vercel (free, no spin-down, zero-config Next.js):
-#   1. Import repo at vercel.com/new
-#   2. Set Root Directory = frontend
-#   3. Add env var: NEXT_PUBLIC_API_URL = https://<your-render-api>.onrender.com
-#
-# n8n → deploy separately on Fly.io using n8n/fly.toml (needs persistent volume).
-#        Render free tier has no disk support so n8n workflows would reset on restart.
-
 services:
   - type: web
     name: ai-content-engine-api
-    runtime: docker
-    dockerContext: ./backend
-    dockerfilePath: ./backend/Dockerfile
+    runtime: python
+    region: oregon
     plan: free
-    healthCheckPath: /health
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: DATABASE_URL
-        sync: false          # set manually in Render dashboard
+      - key: ALLOWED_ORIGINS
+        value: "http://localhost:3000,http://127.0.0.1:3000,https://frontend-theta-steel-79.vercel.app"
       - key: OPENROUTER_API_KEY
-        sync: false          # set manually in Render dashboard
-      - key: OPENROUTER_TEXT_MODEL
-        value: anthropic/claude-3-5-haiku
-      - key: OPENROUTER_IMAGE_MODEL
-        value: google/gemini-2.0-flash-exp:free
-      - key: IMAGE_RETRY_COUNT
-        value: "3"
-      - key: N8N_WEBHOOK_URL
-        sync: false          # set to https://<your-n8n>.fly.dev/webhook/generate-content
+        sync: false
+      - key: DATABASE_URL
+        sync: false
       - key: SUPABASE_JWT_SECRET
-        sync: false          # set manually — Supabase dashboard → Settings → API → JWT Secret
-      - key: EXTRA_ALLOWED_ORIGINS
-        sync: false          # set to your Vercel frontend URL, e.g. https://your-app.vercel.app
+        sync: false
